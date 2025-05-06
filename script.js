@@ -62,7 +62,13 @@ function getWeekNumber(date) {
     return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
 }
 
-// Perbaikan fungsi parseDate
+// Helper function untuk mendapatkan pekan dari tanggal mulai
+function getPekanDariTanggalMulai(tanggal, tanggalMulai) {
+    const selisihHari = Math.floor((tanggal - tanggalMulai) / (24 * 60 * 60 * 1000));
+    return Math.floor(selisihHari / 7) + 1;
+}
+
+// Function untuk parsing tanggal
 function parseDate(dateStr) {
     // Jika dateStr adalah angka (serial date Excel)
     if (typeof dateStr === 'number') {
@@ -96,17 +102,13 @@ function formatDate(date) {
     return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
 }
 
-// PERBAIKAN: Inisialisasi tanggal untuk penjadwalan (tanpa batasan minggu)
-function inisialisasiTanggal(tanggalMulai, jumlahMahasiswa) {
+// Inisialisasi tanggal untuk penjadwalan
+function inisialisasiTanggal(tanggalMulai, jumlahMingguParam) {
     // Konversi string tanggal ke objek Date
     tanggalMulaiSidang = new Date(tanggalMulai);
     
-    // PERBAIKAN: Hitung perkiraan jumlah minggu berdasarkan jumlah mahasiswa
-    // Asumsi: 10 mahasiswa per minggu (2 per hari)
-    const estimasiMinggu = Math.ceil(jumlahMahasiswa / 10);
-    
-    // PERBAIKAN: Gunakan minimal 12 minggu (3 bulan) untuk memastikan cukup slot
-    jumlahMinggu = Math.max(12, estimasiMinggu + 2); // +2 untuk buffer
+    // Gunakan parameter atau default 6 minggu
+    jumlahMinggu = jumlahMingguParam || 6;
     
     console.log(`Inisialisasi jadwal untuk ${jumlahMinggu} minggu (${jumlahMinggu * 5} hari kerja)`);
     
@@ -149,12 +151,16 @@ function inisialisasiTanggal(tanggalMulai, jumlahMahasiswa) {
         // Buat key unik untuk setiap hari+tanggal
         const key = `${namaHari}-${tanggalStr}`;
         
+        // Hitung pekan
+        const pekan = getPekanDariTanggalMulai(currentDate, tanggalMulaiSidang);
+        
         // Simpan dalam mapping
         jadwalHariTanggal[key] = {
             hari: namaHari,
             tanggal: tanggalStr,
-            date: new Date(currentDate), // Simpan objek Date untuk operasi perbandingan
-            slots: {} // Akan diisi dengan slot yang tersedia
+            date: new Date(currentDate),
+            pekan: pekan,
+            slots: {}
         };
         
         // Inisialisasi slots untuk setiap sesi
@@ -174,84 +180,12 @@ function inisialisasiTanggal(tanggalMulai, jumlahMahasiswa) {
     return jadwalHariTanggal;
 }
 
-// Fungsi untuk membuat template Excel
-function createTemplate() {
-    // Buat workbook baru
-    const wb = XLSX.utils.book_new();
-    
-    // Template jadwal mengajar
-    const jadwalData = [
-        ['Hari', 'Sesi', 'Jam', 'Ruangan', 'Mata Kuliah', 'Kode Dosen'],
-        ['Senin', 1, '07:30-09:10', 'A308', 'Statistika', 'SRN'],
-        ['Senin', 1, '07:30-09:10', 'E101', 'Manajemen dan Organisasi B', 'YTW'],
-        ['Senin', 1, '07:30-09:10', 'E102', 'Rekayasa Perangkat Lunak B', 'SRN'],
-        ['Senin', 2, '10:20-12:00', 'A308', 'Desain Interaksi Antarmuka dan Pengalaman Pengguna B', 'MIA'],
-        ['Senin', 2, '10:20-12:00', 'E101', 'Perencanaan Manajemen Proyek Teknologi Informasi A', 'YTW']
-    ];
-    const jadwalSheet = XLSX.utils.aoa_to_sheet(jadwalData);
-    XLSX.utils.book_append_sheet(wb, jadwalSheet, 'JadwalMengajar');
-    
-    // Template tim sidang dengan kolom request jadwal
-    const timData = [
-        ['Nama Mahasiswa / NIM', 'Pembimbing 1', 'Pembimbing 2', 'Penguji 1', 'Penguji 2', 'Request Tanggal', 'Request Sesi'],
-        ['Athifah Shyla Maritza / 10211021', 'Dwi Nur Amalia, S.Kom., M.Kom', 'Yuyun Tri Wiranti, S.Kom., M.MT', 'Ir. I Putu Deny Arthawan Sugih Prabowo, M.Eng', 'Vika Fitratunnany Insanittaqwa, S.Kom., M.Kom', '09/05/2025', 3],
-        ['Annisa Rosmawati / 10211019', 'Yuyun Tri Wiranti, S.Kom., M.MT', 'Henokh Lugo Hariyanto, S.Si., M.Sc', 'M. Ihsan Alfani Putera, S.Tr.,Kom, M.Kom', 'Dwi Arief Prambudi, S.Kom., M.Kom', '', '']
-    ];
-    const timSheet = XLSX.utils.aoa_to_sheet(timData);
-    XLSX.utils.book_append_sheet(wb, timSheet, 'TimSidang');
-    
-    // Download file
-    XLSX.writeFile(wb, 'template_sidang_ta.xlsx');
-}
-
-// PERBAIKAN: Sederhanakan fungsi penjadwalan
+// Penjadwalan TA dengan prioritas request
 function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
     console.log(`Mulai penjadwalan dengan ${timSidang.length} mahasiswa`);
     
     // Hasil jadwal
     const hasilJadwal = new Array(timSidang.length);
-    
-    // Jadwal yang sudah digunakan oleh dosen
-    const jadwalDosenTerpakai = {};
-    Object.values(daftarDosen).forEach(nama => {
-        jadwalDosenTerpakai[nama] = [];
-    });
-    
-    // Buat pemetaan nama lengkap dosen ke jadwal mengajar mereka
-    const dosenToJadwal = {};
-    Object.values(daftarDosen).forEach(nama => {
-        dosenToJadwal[nama] = [];
-    });
-    
-    // Memasukkan jadwal mengajar ke pemetaan
-    jadwalMengajar.forEach(jadwal => {
-        const kodeDosen = jadwal['Kode Dosen'];
-        const namaLengkap = daftarDosen[kodeDosen];
-        
-        if (!namaLengkap) {
-            console.warn(`Kode dosen tidak dikenal: ${kodeDosen}`);
-            return;
-        }
-        
-        // Simpan jadwal mengajar dengan hari-tanggal
-        Object.keys(jadwalHariTanggal).forEach(key => {
-            if (jadwalHariTanggal[key].hari === jadwal.Hari) {
-                const sesi = parseInt(jadwal.Sesi);
-                dosenToJadwal[namaLengkap].push({
-                    hariTanggalKey: key,
-                    sesi: sesi
-                });
-                
-                // Tandai slot ini sebagai tidak tersedia untuk jadwal sidang
-                jadwalHariTanggal[key].slots[sesi].tersedia = false;
-                jadwalHariTanggal[key].slots[sesi].jadwalMengajar.push({
-                    dosen: namaLengkap,
-                    mataKuliah: jadwal['Mata Kuliah'],
-                    ruangan: jadwal['Ruangan']
-                });
-            }
-        });
-    });
     
     // Urutkan tim sidang: prioritaskan yang memiliki request jadwal
     const sortedTimSidang = [...timSidang].sort((a, b) => {
@@ -263,13 +197,11 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
         return 0;
     });
     
-    console.log(`Total mahasiswa dengan request: ${sortedTimSidang.filter(tim => tim['Request Tanggal'] && tim['Request Sesi']).length}`);
+    // Slot yang sudah digunakan untuk jadwal sidang
+    const slotSidangTerpakai = {};
     
-    let mahasiswaTerjadwal = 0;
-    let requestTerpenuhi = 0;
-    let totalRequest = 0;
-    
-    // PERBAIKAN: Penjadwalan sederhana tanpa mempertimbangkan distribusi beban dosen
+    // Langkah 1: Jadwalkan semua request terlebih dahulu (MUTLAK)
+    console.log("=== Langkah 1: Jadwalkan semua request (prioritas utama) ===");
     for (let i = 0; i < sortedTimSidang.length; i++) {
         const tim = sortedTimSidang[i];
         const namaMahasiswa = tim['Nama Mahasiswa / NIM'];
@@ -282,22 +214,8 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
         
         const dosenTim = [pembimbing1, pembimbing2, penguji1, penguji2];
         
-        // Debugging untuk cek apakah semua dosen valid
-        for (const dosen of dosenTim) {
-            if (!dosen || !dosen.trim() || !jadwalDosenTerpakai[dosen]) {
-                console.warn(`Dosen tidak valid dalam tim: "${dosen}" untuk mahasiswa ${namaMahasiswa}`);
-            }
-        }
-        
-        let slotDitemukan = false;
-        let slotTerpilih = null;
-        let isRequest = false;
-        
-        // Cek apakah ada request jadwal
+        // Jika ada request, jadwalkan tanpa mempertimbangkan bentrok jadwal mengajar
         if (requestTanggal && requestSesi) {
-            totalRequest++;
-            
-            // Cari key untuk hari-tanggal yang sesuai dengan request
             const requestDate = parseDate(requestTanggal);
             const dayIndex = requestDate.getDay();
             
@@ -312,203 +230,109 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
             
             // Cek apakah key tersebut ada dalam jadwalHariTanggal
             if (jadwalHariTanggal[requestKey]) {
-                // Cek apakah slot tersedia
-                if (jadwalHariTanggal[requestKey].slots[requestSesi] && 
-                    jadwalHariTanggal[requestKey].slots[requestSesi].tersedia) {
-                    
-                    // Cek apakah ada dosen tim yang mengajar pada slot ini
-                    let adaYangMengajar = false;
-                    for (const dosen of dosenTim) {
-                        if (dosenToJadwal[dosen]) {
-                            for (const jadwal of dosenToJadwal[dosen]) {
-                                if (jadwal.hariTanggalKey === requestKey && jadwal.sesi === requestSesi) {
-                                    adaYangMengajar = true;
-                                    console.log(`${namaMahasiswa}: Request tidak bisa dipenuhi - ${dosen} mengajar`);
-                                    break;
-                                }
-                            }
-                        }
-                        if (adaYangMengajar) break;
-                    }
-                    
-                    // Cek apakah ada dosen yang sudah terjadwal sidang pada slot ini
-                    let adaYangSidang = false;
-                    for (const dosen of dosenTim) {
-                        if (jadwalDosenTerpakai[dosen]) {
-                            for (const jadwal of jadwalDosenTerpakai[dosen]) {
-                                if (jadwal.hariTanggalKey === requestKey && jadwal.sesi === requestSesi) {
-                                    adaYangSidang = true;
-                                    console.log(`${namaMahasiswa}: Request tidak bisa dipenuhi - ${dosen} sidang lain`);
-                                    break;
-                                }
-                            }
-                        }
-                        if (adaYangSidang) break;
-                    }
-                    
-                    // Jika tidak ada konflik, gunakan slot request
-                    if (!adaYangMengajar && !adaYangSidang) {
-                        slotTerpilih = {
-                            hariTanggalKey: requestKey,
-                            sesi: requestSesi
-                        };
+                // Cek apakah slot sudah digunakan untuk sidang lain
+                const slotKey = `${requestKey}-${requestSesi}`;
+                if (slotSidangTerpakai[slotKey]) {
+                    console.log(`${namaMahasiswa}: Request bentrok dengan sidang lain (${requestDay}, ${formattedRequestDate}, sesi ${requestSesi})`);
+                    // Lewati dan akan dijadwalkan pada tahap berikutnya
+                    continue;
+                }
+                
+                // Tandai slot sebagai digunakan untuk sidang
+                slotSidangTerpakai[slotKey] = true;
+                
+                // Tandai slot dalam jadwalHariTanggal
+                jadwalHariTanggal[requestKey].slots[requestSesi].tersedia = false;
+                jadwalHariTanggal[requestKey].slots[requestSesi].jadwalSidang = {
+                    mahasiswa: namaMahasiswa,
+                    dosen: dosenTim,
+                    isRequest: true
+                };
+                
+                // Tambahkan ke hasil
+                hasilJadwal[i] = {
+                    'Nama Mahasiswa': namaMahasiswa,
+                    'Pembimbing 1': pembimbing1,
+                    'Pembimbing 2': pembimbing2,
+                    'Penguji 1': penguji1,
+                    'Penguji 2': penguji2,
+                    'Hari': jadwalHariTanggal[requestKey].hari,
+                    'Tanggal': jadwalHariTanggal[requestKey].tanggal,
+                    'Sesi': requestSesi,
+                    'Jam': jadwalJam[requestSesi],
+                    'IsRequest': true
+                };
+                
+                console.log(`${namaMahasiswa}: Request dijadwalkan (${requestDay}, ${formattedRequestDate}, sesi ${requestSesi})`);
+            } else {
+                console.log(`${namaMahasiswa}: Request tanggal tidak dalam rentang penjadwalan (${requestDay}, ${formattedRequestDate})`);
+                // Lewati dan akan dijadwalkan pada tahap berikutnya
+                continue;
+            }
+        } else {
+            // Lewati yang tidak punya request (akan dijadwalkan pada langkah berikutnya)
+            continue;
+        }
+    }
+    
+    // Langkah 2: Jadwalkan mahasiswa yang belum terjadwal
+    console.log("=== Langkah 2: Jadwalkan mahasiswa yang belum terjadwal ===");
+    for (let i = 0; i < sortedTimSidang.length; i++) {
+        const tim = sortedTimSidang[i];
+        const namaMahasiswa = tim['Nama Mahasiswa / NIM'];
+        const pembimbing1 = tim['Pembimbing 1'];
+        const pembimbing2 = tim['Pembimbing 2'];
+        const penguji1 = tim['Penguji 1'];
+        const penguji2 = tim['Penguji 2'];
+        
+        const dosenTim = [pembimbing1, pembimbing2, penguji1, penguji2];
+        
+        // Lewati yang sudah terjadwal pada langkah 1
+        if (hasilJadwal[i]) {
+            continue;
+        }
+        
+        // Cari slot tersedia
+        let slotDitemukan = false;
+        let hariTanggalKey = null;
+        let sesi = null;
+        
+        // Cari dari hari pertama hingga akhir
+        Object.keys(jadwalHariTanggal)
+            .sort((a, b) => {
+                // Sort berdasarkan tanggal (dari awal ke akhir)
+                return jadwalHariTanggal[a].date - jadwalHariTanggal[b].date;
+            })
+            .some(key => {
+                // Cek setiap sesi dalam hari ini
+                for (let s = 1; s <= 4; s++) {
+                    const slotKey = `${key}-${s}`;
+                    // Jika slot belum digunakan untuk sidang
+                    if (!slotSidangTerpakai[slotKey]) {
+                        // Tandai slot ini sebagai digunakan
+                        slotSidangTerpakai[slotKey] = true;
+                        
+                        // Simpan key dan sesi
+                        hariTanggalKey = key;
+                        sesi = s;
                         slotDitemukan = true;
-                        isRequest = true;
-                        requestTerpenuhi++;
-                        console.log(`${namaMahasiswa}: Request terpenuhi (${requestTanggal}, sesi ${requestSesi})`);
-                    }
-                } else {
-                    console.log(`${namaMahasiswa}: Request tidak bisa dipenuhi - slot tidak tersedia (${requestDay}, ${formattedRequestDate}, sesi ${requestSesi})`);
-                }
-            } else {
-                console.log(`${namaMahasiswa}: Request tidak bisa dipenuhi - tanggal tidak ditemukan (${requestDay}, ${formattedRequestDate})`);
-                
-                // PERBAIKAN: Cari tanggal terdekat dengan request jika tepat tidak ada
-                const tanggalTerdekat = Object.keys(jadwalHariTanggal)
-                    .filter(key => key.startsWith(requestDay))
-                    .sort((a, b) => {
-                        const dateA = new Date(jadwalHariTanggal[a].date);
-                        const dateB = new Date(jadwalHariTanggal[b].date);
-                        return Math.abs(dateA - requestDate) - Math.abs(dateB - requestDate);
-                    })[0];
-                
-                if (tanggalTerdekat) {
-                    console.log(`${namaMahasiswa}: Mencoba tanggal terdekat ${tanggalTerdekat}`);
-                    
-                    // Cek slot pada tanggal terdekat
-                    if (jadwalHariTanggal[tanggalTerdekat].slots[requestSesi] && 
-                        jadwalHariTanggal[tanggalTerdekat].slots[requestSesi].tersedia) {
                         
-                        // Cek konflik dosen
-                        let adaKonflik = false;
-                        for (const dosen of dosenTim) {
-                            // Cek jadwal mengajar
-                            if (dosenToJadwal[dosen]) {
-                                for (const jadwal of dosenToJadwal[dosen]) {
-                                    if (jadwal.hariTanggalKey === tanggalTerdekat && jadwal.sesi === requestSesi) {
-                                        adaKonflik = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            // Cek jadwal sidang
-                            if (!adaKonflik && jadwalDosenTerpakai[dosen]) {
-                                for (const jadwal of jadwalDosenTerpakai[dosen]) {
-                                    if (jadwal.hariTanggalKey === tanggalTerdekat && jadwal.sesi === requestSesi) {
-                                        adaKonflik = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            if (adaKonflik) break;
-                        }
-                        
-                        // Jika tidak ada konflik, gunakan tanggal terdekat
-                        if (!adaKonflik) {
-                            slotTerpilih = {
-                                hariTanggalKey: tanggalTerdekat,
-                                sesi: requestSesi
-                            };
-                            slotDitemukan = true;
-                            isRequest = true; // masih dianggap sebagai request (request yang disesuaikan)
-                            requestTerpenuhi++;
-                            console.log(`${namaMahasiswa}: Request disesuaikan ke tanggal terdekat (${jadwalHariTanggal[tanggalTerdekat].tanggal}, sesi ${requestSesi})`);
-                        }
+                        // Keluar dari loop
+                        return true;
                     }
                 }
-            }
-        }
+                // Lanjut ke hari berikutnya
+                return false;
+            });
         
-        // Jika tidak ada request atau request tidak bisa dipenuhi, cari slot tersedia
-        if (!slotDitemukan) {
-            // Cari semua slot tersedia
-            const slotTersedia = [];
-            
-            // PERBAIKAN: Cari slot dari yang paling awal hingga akhir (tanpa batas waktu)
-            Object.keys(jadwalHariTanggal)
-                .sort((a, b) => {
-                    // Sort berdasarkan tanggal (dari awal ke akhir)
-                    return jadwalHariTanggal[a].date - jadwalHariTanggal[b].date;
-                })
-                .forEach(hariTanggalKey => {
-                    for (let sesi = 1; sesi <= 4; sesi++) {
-                        if (jadwalHariTanggal[hariTanggalKey].slots[sesi].tersedia) {
-                            // Cek apakah ada dosen yang mengajar pada slot ini
-                            let adaYangMengajar = false;
-                            for (const dosen of dosenTim) {
-                                if (dosenToJadwal[dosen]) {
-                                    for (const jadwal of dosenToJadwal[dosen]) {
-                                        if (jadwal.hariTanggalKey === hariTanggalKey && jadwal.sesi === sesi) {
-                                            adaYangMengajar = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (adaYangMengajar) break;
-                            }
-                            
-                            // Cek apakah ada dosen yang sudah terjadwal sidang pada slot ini
-                            let adaYangSidang = false;
-                            for (const dosen of dosenTim) {
-                                if (jadwalDosenTerpakai[dosen]) {
-                                    for (const jadwal of jadwalDosenTerpakai[dosen]) {
-                                        if (jadwal.hariTanggalKey === hariTanggalKey && jadwal.sesi === sesi) {
-                                            adaYangSidang = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (adaYangSidang) break;
-                            }
-                            
-                            // Jika tidak ada konflik, tambahkan ke slot tersedia
-                            if (!adaYangMengajar && !adaYangSidang) {
-                                slotTersedia.push({
-                                    hariTanggalKey: hariTanggalKey,
-                                    sesi: sesi
-                                });
-                            }
-                        }
-                    }
-                });
-            
-            console.log(`${namaMahasiswa}: ${slotTersedia.length} slot tersedia ditemukan`);
-            
-            // Jika ada slot tersedia, pilih yang paling awal
-            // (sudah diurutkan berdasarkan tanggal dan sesi)
-            if (slotTersedia.length > 0) {
-                slotTerpilih = slotTersedia[0];
-                slotDitemukan = true;
-                console.log(`${namaMahasiswa}: Dijadwalkan pada ${jadwalHariTanggal[slotTerpilih.hariTanggalKey].hari}, ${jadwalHariTanggal[slotTerpilih.hariTanggalKey].tanggal}, sesi ${slotTerpilih.sesi}`);
-            } else {
-                console.log(`${namaMahasiswa}: TIDAK ADA SLOT TERSEDIA SAMA SEKALI!`);
-            }
-        }
-        
-        // Jika ditemukan slot, atur jadwal
         if (slotDitemukan) {
-            const hariTanggalKey = slotTerpilih.hariTanggalKey;
-            const sesi = slotTerpilih.sesi;
-            
-            // Tandai slot ini sebagai digunakan
+            // Tandai slot dalam jadwalHariTanggal
             jadwalHariTanggal[hariTanggalKey].slots[sesi].tersedia = false;
             jadwalHariTanggal[hariTanggalKey].slots[sesi].jadwalSidang = {
                 mahasiswa: namaMahasiswa,
                 dosen: dosenTim,
-                isRequest: isRequest
+                isRequest: false
             };
-            
-            // Update jadwal dosen terpakai
-            dosenTim.forEach(dosen => {
-                if (jadwalDosenTerpakai[dosen]) {
-                    jadwalDosenTerpakai[dosen].push({
-                        hariTanggalKey: hariTanggalKey,
-                        sesi: sesi
-                    });
-                }
-            });
             
             // Tambahkan ke hasil
             hasilJadwal[i] = {
@@ -521,10 +345,10 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
                 'Tanggal': jadwalHariTanggal[hariTanggalKey].tanggal,
                 'Sesi': sesi,
                 'Jam': jadwalJam[sesi],
-                'IsRequest': isRequest
+                'IsRequest': false
             };
             
-            mahasiswaTerjadwal++;
+            console.log(`${namaMahasiswa}: Dijadwalkan pada ${jadwalHariTanggal[hariTanggalKey].hari}, ${jadwalHariTanggal[hariTanggalKey].tanggal}, sesi ${sesi}`);
         } else {
             // Tidak ada slot tersedia
             hasilJadwal[i] = {
@@ -539,11 +363,14 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
                 'Jam': '-',
                 'IsRequest': false
             };
+            console.log(`${namaMahasiswa}: TIDAK ADA SLOT TERSEDIA`);
         }
     }
     
-    console.log(`Penjadwalan selesai: ${mahasiswaTerjadwal}/${timSidang.length} mahasiswa berhasil dijadwalkan (${Math.round(mahasiswaTerjadwal/timSidang.length*100)}%)`);
-    console.log(`Request terpenuhi: ${requestTerpenuhi}/${totalRequest} (${totalRequest > 0 ? Math.round(requestTerpenuhi/totalRequest*100) : 0}%)`);
+    // Hitung statistik
+    const mahasiswaTerjadwal = hasilJadwal.filter(h => h && h.Hari !== 'Tidak ada slot tersedia').length;
+    const totalMahasiswa = timSidang.length;
+    console.log(`Penjadwalan selesai: ${mahasiswaTerjadwal}/${totalMahasiswa} mahasiswa berhasil dijadwalkan (${Math.round(mahasiswaTerjadwal/totalMahasiswa*100)}%)`);
     
     return hasilJadwal;
 }
@@ -552,67 +379,101 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
 function generateAvailableSlots(jadwalMengajar, hasilJadwal, jadwalHariTanggal) {
     const slotTersedia = [];
     
+    // Set untuk menyimpan slot yang sudah digunakan untuk sidang
+    const slotSidangTerpakai = new Set();
+    
+    // Tandai slot yang sudah digunakan untuk sidang
+    hasilJadwal.forEach(jadwal => {
+        if (jadwal.Hari !== 'Tidak ada slot tersedia') {
+            const key = `${jadwal.Hari}-${jadwal.Tanggal}-${jadwal.Sesi}`;
+            slotSidangTerpakai.add(key);
+        }
+    });
+    
     // Iterasi semua slot dari awal hingga akhir periode
     Object.keys(jadwalHariTanggal).forEach(hariTanggalKey => {
         const hariTanggal = jadwalHariTanggal[hariTanggalKey];
         
         // Iterasi semua sesi dalam hari ini
         for (let sesi = 1; sesi <= 4; sesi++) {
-            if (hariTanggal.slots[sesi].tersedia) {
-                // Cari dosen yang tersedia pada slot ini
-                const dosenTersedia = [];
-                
-                Object.keys(daftarDosen).forEach(kode => {
-                    const namaLengkap = daftarDosen[kode];
-                    let dosenSibuk = false;
-                    
-                    // Cek apakah dosen mengajar pada slot ini
-                    for (const jadwal of jadwalMengajar) {
-                        if (jadwal['Kode Dosen'] === kode && 
-                            hariTanggal.hari === jadwal['Hari'] && 
-                            sesi === parseInt(jadwal['Sesi'])) {
-                            dosenSibuk = true;
-                            break;
-                        }
-                    }
-                    
-                    // Cek apakah dosen sidang pada slot ini
-                    if (!dosenSibuk) {
-                        for (const jadwal of hasilJadwal) {
-                            if (jadwal['Hari'] !== 'Tidak ada slot tersedia' &&
-                                jadwal['Hari'] === hariTanggal.hari &&
-                                jadwal['Tanggal'] === hariTanggal.tanggal &&
-                                jadwal['Sesi'] === sesi &&
-                                (jadwal['Pembimbing 1'] === namaLengkap ||
-                                 jadwal['Pembimbing 2'] === namaLengkap ||
-                                 jadwal['Penguji 1'] === namaLengkap ||
-                                 jadwal['Penguji 2'] === namaLengkap)) {
-                                dosenSibuk = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!dosenSibuk) {
-                        dosenTersedia.push(kode);
-                    }
-                });
-                
-                // Hanya tambahkan slot jika ada dosen yang tersedia
-                if (dosenTersedia.length > 0) {
-                    slotTersedia.push({
-                        'Hari': hariTanggal.hari,
-                        'Tanggal': hariTanggal.tanggal,
-                        'Sesi': sesi,
-                        'Jam': jadwalJam[sesi],
-                        'Ketersediaan Dosen': dosenTersedia.join(', ')
-                    });
-                }
+            // Lewati slot yang sudah digunakan untuk sidang
+            const key = `${hariTanggal.hari}-${hariTanggal.tanggal}-${sesi}`;
+            if (slotSidangTerpakai.has(key)) {
+                continue;
             }
+            
+            // Tambahkan ke daftar slot tersedia
+            slotTersedia.push({
+                'Hari': hariTanggal.hari,
+                'Tanggal': hariTanggal.tanggal,
+                'Pekan': hariTanggal.pekan,
+                'Sesi': sesi,
+                'Jam': jadwalJam[sesi],
+                'Ketersediaan Dosen': 'Semua Dosen' // Untuk sederhananya, anggap semua dosen tersedia
+            });
         }
     });
     
     return slotTersedia;
+}
+
+// Fungsi untuk membuat template Excel
+function createTemplate() {
+    // Buat workbook baru
+    const wb = XLSX.utils.book_new();
+    
+    // Template tim sidang dengan kolom request jadwal
+    const timData = [
+        ['Nama Mahasiswa / NIM', 'Pembimbing 1', 'Pembimbing 2', 'Penguji 1', 'Penguji 2', 'Request Tanggal', 'Request Sesi'],
+        ['Athifah Shyla Maritza / 10211021', 'Dwi Nur Amalia, S.Kom., M.Kom', 'Yuyun Tri Wiranti, S.Kom., M.MT', 'Ir. I Putu Deny Arthawan Sugih Prabowo, M.Eng', 'Vika Fitratunnany Insanittaqwa, S.Kom., M.Kom', '09/05/2025', 3],
+        ['Annisa Rosmawati / 10211019', 'Yuyun Tri Wiranti, S.Kom., M.MT', 'Henokh Lugo Hariyanto, S.Si., M.Sc', 'M. Ihsan Alfani Putera, S.Tr.,Kom, M.Kom', 'Dwi Arief Prambudi, S.Kom., M.Kom', '', '']
+    ];
+    const timSheet = XLSX.utils.aoa_to_sheet(timData);
+    XLSX.utils.book_append_sheet(wb, timSheet, 'TimSidang');
+    
+    // Download file
+    XLSX.writeFile(wb, 'template_sidang_ta.xlsx');
+}
+
+// Variabel untuk jadwal mengajar dosen
+let dosenJadwalMengajar = {};
+
+// Function untuk menambahkan jadwal mengajar dosen
+function addDosenJadwalMengajar(dosen, hari, pekan, sesi) {
+    if (!dosenJadwalMengajar[dosen]) {
+        dosenJadwalMengajar[dosen] = [];
+    }
+    
+    dosenJadwalMengajar[dosen].push({
+        hari: hari,
+        pekan: pekan,
+        sesi: sesi
+    });
+    
+    console.log(`Jadwal mengajar ditambahkan: ${dosen} - ${hari}, Pekan ${pekan}, Sesi ${sesi}`);
+    
+    // Update tampilan kalender
+    updateCalendar();
+}
+
+// Function untuk menghapus jadwal mengajar dosen
+function removeDosenJadwalMengajar(dosen, hari, pekan, sesi) {
+    if (!dosenJadwalMengajar[dosen]) {
+        return;
+    }
+    
+    // Cari indeks jadwal yang akan dihapus
+    const index = dosenJadwalMengajar[dosen].findIndex(j => 
+        j.hari === hari && j.pekan === parseInt(pekan) && j.sesi === parseInt(sesi)
+    );
+    
+    if (index !== -1) {
+        dosenJadwalMengajar[dosen].splice(index, 1);
+        console.log(`Jadwal mengajar dihapus: ${dosen} - ${hari}, Pekan ${pekan}, Sesi ${sesi}`);
+        
+        // Update tampilan kalender
+        updateCalendar();
+    }
 }
 
 // Parsing data Excel
@@ -621,30 +482,16 @@ function processExcelFile(file) {
     
     reader.onload = function(e) {
         const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        
-        // Baca jadwal mengajar
-        const jadwalSheet = workbook.Sheets['JadwalMengajar'];
-        const jadwalData = XLSX.utils.sheet_to_json(jadwalSheet, { header: 1 });
-        
-        // Konversi data ke format yang dibutuhkan
-        const headers = jadwalData[0];
-        jadwalMengajar = [];
-        
-        for (let i = 1; i < jadwalData.length; i++) {
-            const row = jadwalData[i];
-            if (row.length > 0) {
-                const item = {};
-                for (let j = 0; j < headers.length; j++) {
-                    item[headers[j]] = row[j];
-                }
-                jadwalMengajar.push(item);
-            }
-        }
+        const workbook = XLSX.read(data, {type: 'array'});
         
         // Baca tim sidang
         const timSheet = workbook.Sheets['TimSidang'];
-        const timData = XLSX.utils.sheet_to_json(timSheet, { header: 1 });
+        if (!timSheet) {
+            alert('Sheet "TimSidang" tidak ditemukan dalam file Excel!');
+            return;
+        }
+        
+        const timData = XLSX.utils.sheet_to_json(timSheet, {header: 1});
         
         // Konversi data ke format yang dibutuhkan
         const timHeaders = timData[0];
@@ -655,7 +502,7 @@ function processExcelFile(file) {
             if (row.length > 0) {
                 const item = {};
                 for (let j = 0; j < timHeaders.length; j++) {
-                    item[timHeaders[j]] = row[j] || ''; // Pastikan nilai tidak undefined
+                    item[timHeaders[j]] = row[j] || '';
                 }
                 timSidang.push(item);
             }
@@ -667,19 +514,13 @@ function processExcelFile(file) {
             alert('Silakan masukkan tanggal mulai sidang terlebih dahulu!');
             return;
         }
-
-        // Informasi data dasar
-        console.log(`Jumlah jadwal mengajar: ${jadwalMengajar.length}`);
-        console.log(`Jumlah mahasiswa: ${timSidang.length}`);
         
-        // Konversi format input date (YYYY-MM-DD) ke format DD/MM/YYYY
-        const dateObj = new Date(tanggalMulai);
-        const formattedDate = formatDate(dateObj);
-        console.log(`Tanggal mulai sidang: ${formattedDate}`);
+        // Dapatkan jumlah minggu dari input (jika ada)
+        const jumlahMingguInput = parseInt(document.getElementById('jumlah-minggu').value);
+        const mingguValid = !isNaN(jumlahMingguInput) && jumlahMingguInput > 0;
         
         // Inisialisasi jadwal hari-tanggal
-        jadwalHariTanggal = inisialisasiTanggal(tanggalMulai, timSidang.length);
-        console.log(`Total hari dalam jadwal: ${Object.keys(jadwalHariTanggal).length}`);
+        jadwalHariTanggal = inisialisasiTanggal(tanggalMulai, mingguValid ? jumlahMingguInput : null);
         
         // Lakukan penjadwalan
         console.time('Waktu Penjadwalan');
@@ -696,7 +537,7 @@ function processExcelFile(file) {
         displayAvailableSlots(slotTersedia);
         
         // Update kalender
-        updateCalendar(jadwalHariTanggal);
+        updateCalendar();
         
         // Aktifkan tab hasil
         document.getElementById('result-tab').click();
@@ -706,10 +547,6 @@ function processExcelFile(file) {
         
         // Isi dropdown minggu untuk kalender
         populateWeekDropdown();
-        
-        // Tampilkan ringkasan
-        const terjadwal = hasilJadwal.filter(h => h.Hari !== 'Tidak ada slot tersedia').length;
-        console.log(`Ringkasan: ${terjadwal} dari ${timSidang.length} mahasiswa berhasil dijadwalkan (${Math.round(terjadwal/timSidang.length*100)}%)`);
     };
     
     reader.readAsArrayBuffer(file);
@@ -761,6 +598,7 @@ function displayAvailableSlots(slots) {
         row.innerHTML = `
             <td>${slot.Hari}</td>
             <td>${slot.Tanggal}</td>
+            <td>${slot.Pekan}</td>
             <td>${slot.Sesi}</td>
             <td>${slot.Jam}</td>
             <td>${slot['Ketersediaan Dosen']}</td>
@@ -774,6 +612,9 @@ function displayAvailableSlots(slots) {
 function populateDosenDropdowns() {
     const filterLecturer = document.getElementById('filter-lecturer');
     const calendarLecturer = document.getElementById('calendar-lecturer');
+    const jadwalMengajarDosen = document.getElementById('jadwal-mengajar-dosen');
+    
+    if (!filterLecturer || !calendarLecturer || !jadwalMengajarDosen) return;
     
     // Kosongkan opsi kecuali "Semua Dosen"
     while (filterLecturer.options.length > 1) {
@@ -782,6 +623,10 @@ function populateDosenDropdowns() {
     
     while (calendarLecturer.options.length > 1) {
         calendarLecturer.remove(1);
+    }
+    
+    while (jadwalMengajarDosen.options.length > 0) {
+        jadwalMengajarDosen.remove(0);
     }
     
     // Tambahkan opsi dosen
@@ -797,12 +642,18 @@ function populateDosenDropdowns() {
         option2.value = nama;
         option2.textContent = `${nama} (${kode})`;
         calendarLecturer.appendChild(option2);
+        
+        const option3 = document.createElement('option');
+        option3.value = nama;
+        option3.textContent = `${nama} (${kode})`;
+        jadwalMengajarDosen.appendChild(option3);
     });
 }
 
 // Fungsi untuk mengisi dropdown minggu untuk kalender
 function populateWeekDropdown() {
     const calendarWeek = document.getElementById('calendar-week');
+    if (!calendarWeek) return;
     
     // Kosongkan opsi
     calendarWeek.innerHTML = '';
@@ -812,79 +663,96 @@ function populateWeekDropdown() {
     
     Object.keys(jadwalHariTanggal).forEach(key => {
         const data = jadwalHariTanggal[key];
-        const date = new Date(data.date);
-        const weekNum = getWeekNumber(date);
+        const pekan = data.pekan;
         
-        if (!weeks[weekNum]) {
-            weeks[weekNum] = [];
+        if (!weeks[pekan]) {
+            weeks[pekan] = [];
         }
         
-        weeks[weekNum].push({
+        weeks[pekan].push({
             key: key,
             data: data
         });
     });
     
     // Tambahkan opsi untuk setiap minggu
-    Object.keys(weeks).sort().forEach((weekNum, index) => {
-        const weekData = weeks[weekNum];
+    Object.keys(weeks).sort().forEach(pekan => {
+        const weekData = weeks[pekan];
+        if (weekData.length === 0) return;
+        
         const startDate = weekData[0].data.tanggal;
         const endDate = weekData[weekData.length - 1].data.tanggal;
         
         const option = document.createElement('option');
-        option.value = weekNum;
-        option.textContent = `Minggu ${index + 1} (${startDate} - ${endDate})`;
+        option.value = pekan;
+        option.textContent = `Pekan ${pekan} (${startDate} - ${endDate})`;
         calendarWeek.appendChild(option);
     });
     
     // Default to first week
     if (calendarWeek.options.length > 0) {
         calendarWeek.selectedIndex = 0;
+        calendarWeek.dispatchEvent(new Event('change'));
     }
-    
-    // Trigger calendar update
-    calendarWeek.dispatchEvent(new Event('change'));
 }
 
 // Update tampilan kalender
 function updateCalendar() {
     // Reset tampilan kalender
     const calendarContainer = document.querySelector('.calendar-container');
+    if (!calendarContainer) return;
+    
     calendarContainer.innerHTML = '';
     
     // Pilih dosen dan minggu
-    const selectedDosen = document.getElementById('calendar-lecturer').value;
-    const selectedWeek = document.getElementById('calendar-week').value;
+    const selectedDosen = document.getElementById('calendar-lecturer');
+    const selectedWeek = document.getElementById('calendar-week');
     
-    // Kelompokkan berdasarkan minggu
+    if (!selectedDosen || !selectedWeek) return;
+    
+    const dosenValue = selectedDosen.value;
+    const weekValue = selectedWeek.value;
+    
+    if (!jadwalHariTanggal || Object.keys(jadwalHariTanggal).length === 0) {
+        calendarContainer.innerHTML = '<p>Silakan unggah file Excel dan tentukan tanggal mulai terlebih dahulu.</p>';
+        return;
+    }
+    
+    // Kelompokkan berdasarkan pekan
     const weeks = {};
     
     Object.keys(jadwalHariTanggal).forEach(key => {
         const data = jadwalHariTanggal[key];
-        const date = new Date(data.date);
-        const weekNum = getWeekNumber(date);
+        const pekan = data.pekan;
         
-        if (!weeks[weekNum]) {
-            weeks[weekNum] = [];
+        if (!weeks[pekan]) {
+            weeks[pekan] = [];
         }
         
-        weeks[weekNum].push({
+        weeks[pekan].push({
             key: key,
             data: data
         });
     });
     
-    // Hanya tampilkan minggu yang dipilih
-    if (selectedWeek && weeks[selectedWeek]) {
-        const weekData = weeks[selectedWeek];
+    // Sort hari dalam pekan berdasarkan indeks hari
+    if (weeks[weekValue]) {
+        weeks[weekValue].sort((a, b) => {
+            return hariToIndex[a.data.hari] - hariToIndex[b.data.hari];
+        });
+    }
+    
+    // Hanya tampilkan pekan yang dipilih
+    if (weekValue && weeks[weekValue]) {
+        const weekData = weeks[weekValue];
         
-        // Buat header untuk minggu ini
+        // Buat header untuk pekan ini
         const weekHeader = document.createElement('div');
         weekHeader.className = 'week-header';
-        weekHeader.textContent = `Minggu ${Object.keys(weeks).indexOf(selectedWeek) + 1}`;
+        weekHeader.textContent = `Pekan ${weekValue}`;
         calendarContainer.appendChild(weekHeader);
         
-        // Buat grid kalender untuk minggu ini
+        // Buat grid kalender untuk pekan ini
         const calendarGrid = document.createElement('div');
         calendarGrid.className = 'calendar-grid';
         
@@ -917,56 +785,55 @@ function updateCalendar() {
             timeCell.innerHTML = `Sesi ${sesi}<br>${jadwalJam[sesi]}`;
             calendarBody.appendChild(timeCell);
             
-            // Untuk setiap hari dalam minggu
+            // Untuk setiap hari dalam pekan
             weekData.forEach(day => {
                 const cellId = `cell-${day.data.hari}-${day.data.tanggal}-${sesi}`;
                 const cell = document.createElement('div');
                 cell.className = 'calendar-cell status-available';
                 cell.id = cellId;
                 
-                // Cek slot ini untuk jadwal mengajar
-                if (day.data.slots[sesi].jadwalMengajar.length > 0) {
-                    let showTeaching = false;
+                // Tambahkan data atribut
+                cell.dataset.hari = day.data.hari;
+                cell.dataset.tanggal = day.data.tanggal;
+                cell.dataset.pekan = day.data.pekan;
+                cell.dataset.sesi = sesi;
+                
+                // Tambahkan event click untuk mengedit jadwal mengajar
+                cell.addEventListener('click', function() {
+                    handleCalendarCellClick(this);
+                });
+                
+                // Cek jadwal mengajar dosen pada slot ini
+                if (dosenValue !== 'all' && dosenJadwalMengajar[dosenValue]) {
+                    const jadwalDosen = dosenJadwalMengajar[dosenValue];
+                    const isTeaching = jadwalDosen.some(jadwal => 
+                        jadwal.hari === day.data.hari && 
+                        jadwal.pekan === parseInt(day.data.pekan) && 
+                        jadwal.sesi === parseInt(sesi)
+                    );
                     
-                    if (selectedDosen === 'all') {
-                        showTeaching = true;
-                    } else {
-                        // Cek apakah dosen yang dipilih mengajar pada slot ini
-                        for (const jadwal of day.data.slots[sesi].jadwalMengajar) {
-                            if (jadwal.dosen === selectedDosen) {
-                                showTeaching = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (showTeaching) {
+                    if (isTeaching) {
                         cell.classList.remove('status-available');
                         cell.classList.add('status-teaching');
                         
-                        // Tambahkan info jadwal mengajar
-                        day.data.slots[sesi].jadwalMengajar.forEach(jadwal => {
-                            if (selectedDosen === 'all' || jadwal.dosen === selectedDosen) {
-                                const eventDiv = document.createElement('div');
-                                eventDiv.className = 'calendar-event event-teaching';
-                                eventDiv.textContent = `${jadwal.mataKuliah} (${kodeToDosen[jadwal.dosen]}) - ${jadwal.ruangan}`;
-                                cell.appendChild(eventDiv);
-                            }
-                        });
+                        const eventDiv = document.createElement('div');
+                        eventDiv.className = 'calendar-event event-teaching';
+                        eventDiv.textContent = `${dosenValue} Mengajar`;
+                        cell.appendChild(eventDiv);
                     }
                 }
                 
-                // Cek slot ini untuk jadwal sidang
+                // Cek jadwal sidang pada slot ini
                 if (day.data.slots[sesi].jadwalSidang) {
                     const sidang = day.data.slots[sesi].jadwalSidang;
                     let showSidang = false;
                     
-                    if (selectedDosen === 'all') {
+                    if (dosenValue === 'all') {
                         showSidang = true;
                     } else {
                         // Cek apakah dosen yang dipilih terlibat dalam sidang ini
                         for (const dosen of sidang.dosen) {
-                            if (dosen === selectedDosen) {
+                            if (dosen === dosenValue) {
                                 showSidang = true;
                                 break;
                             }
@@ -1004,11 +871,46 @@ function updateCalendar() {
     }
 }
 
+// Menangani klik pada sel kalender
+function handleCalendarCellClick(cell) {
+    const hari = cell.dataset.hari;
+    const pekan = parseInt(cell.dataset.pekan);
+    const sesi = parseInt(cell.dataset.sesi);
+    const selectedDosen = document.getElementById('calendar-lecturer').value;
+    
+    // Jika semua dosen, tampilkan dialog untuk memilih dosen
+    if (selectedDosen === 'all') {
+        alert('Silakan pilih dosen terlebih dahulu untuk mengedit jadwal mengajar.');
+        return;
+    }
+    
+    // Cek apakah dosen sudah memiliki jadwal mengajar pada slot ini
+    let isTeaching = false;
+    if (dosenJadwalMengajar[selectedDosen]) {
+        isTeaching = dosenJadwalMengajar[selectedDosen].some(jadwal => 
+            jadwal.hari === hari && 
+            jadwal.pekan === pekan && 
+            jadwal.sesi === sesi
+        );
+    }
+    
+    // Toggle jadwal mengajar
+    if (isTeaching) {
+        if (confirm(`Hapus jadwal mengajar ${selectedDosen} pada ${hari}, Pekan ${pekan}, Sesi ${sesi}?`)) {
+            removeDosenJadwalMengajar(selectedDosen, hari, pekan, sesi);
+        }
+    } else {
+        if (confirm(`Tambahkan jadwal mengajar ${selectedDosen} pada ${hari}, Pekan ${pekan}, Sesi ${sesi}?`)) {
+            addDosenJadwalMengajar(selectedDosen, hari, pekan, sesi);
+        }
+    }
+}
+
 // Filter slot tersedia
 function filterAvailableSlots() {
     const dayFilter = document.getElementById('filter-day').value;
     const sessionFilter = document.getElementById('filter-session').value;
-    const lecturerFilter = document.getElementById('filter-lecturer').value;
+    const pekanFilter = document.getElementById('filter-pekan').value;
     
     let filteredSlots = [...slotTersedia];
     
@@ -1022,17 +924,9 @@ function filterAvailableSlots() {
         filteredSlots = filteredSlots.filter(slot => slot.Sesi === parseInt(sessionFilter));
     }
     
-    // Filter berdasarkan dosen
-    if (lecturerFilter !== 'all') {
-        filteredSlots = filteredSlots.filter(slot => {
-            const dosenList = slot['Ketersediaan Dosen'].split(', ');
-            for (const kodeDosen of dosenList) {
-                if (daftarDosen[kodeDosen] === lecturerFilter) {
-                    return true;
-                }
-            }
-            return false;
-        });
+    // Filter berdasarkan pekan
+    if (pekanFilter !== 'all') {
+        filteredSlots = filteredSlots.filter(slot => slot.Pekan === parseInt(pekanFilter));
     }
     
     // Tampilkan hasil filter
@@ -1080,13 +974,14 @@ function exportAvailableSlots() {
     
     // Data untuk sheet slot tersedia
     const slotData = [
-        ['Hari', 'Tanggal', 'Sesi', 'Jam', 'Ketersediaan Dosen']
+        ['Hari', 'Tanggal', 'Pekan', 'Sesi', 'Jam', 'Ketersediaan Dosen']
     ];
     
     slotTersedia.forEach(slot => {
         slotData.push([
             slot.Hari,
             slot.Tanggal,
+            slot.Pekan,
             slot.Sesi,
             slot.Jam,
             slot['Ketersediaan Dosen']
@@ -1103,64 +998,103 @@ function exportAvailableSlots() {
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     // Download template
-    document.getElementById('download-template').addEventListener('click', createTemplate);
+    const downloadTemplate = document.getElementById('download-template');
+    if (downloadTemplate) {
+        downloadTemplate.addEventListener('click', createTemplate);
+    }
     
     // File upload
-    document.getElementById('file-input').addEventListener('change', function(e) {
-        if (e.target.files.length) {
-            processExcelFile(e.target.files[0]);
-        }
-    });
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length) {
+                processExcelFile(e.target.files[0]);
+            }
+        });
+    }
     
     // Drag & drop
     const dropArea = document.getElementById('drop-area');
-    
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, preventDefaults, false);
-    });
-    
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-    
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, highlight, false);
-    });
-    
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, unhighlight, false);
-    });
-    
-    function highlight() {
-        dropArea.classList.add('highlight');
-    }
-    
-    function unhighlight() {
-        dropArea.classList.remove('highlight');
-    }
-    
-    dropArea.addEventListener('drop', function(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
+    if (dropArea) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
         
-        if (files.length && files[0].name.endsWith('.xlsx')) {
-            processExcelFile(files[0]);
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
         }
-    });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.classList.add('highlight');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('highlight');
+        }
+        
+        dropArea.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length && files[0].name.endsWith('.xlsx')) {
+                processExcelFile(files[0]);
+            }
+        });
+    }
     
     // Export hasil
-    document.getElementById('export-result').addEventListener('click', exportResults);
+    const exportResult = document.getElementById('export-result');
+    if (exportResult) {
+        exportResult.addEventListener('click', exportResults);
+    }
     
     // Export slot tersedia
-    document.getElementById('export-available').addEventListener('click', exportAvailableSlots);
+    const exportAvailable = document.getElementById('export-available');
+    if (exportAvailable) {
+        exportAvailable.addEventListener('click', exportAvailableSlots);
+    }
     
     // Filter slot tersedia
-    document.getElementById('filter-day').addEventListener('change', filterAvailableSlots);
-    document.getElementById('filter-session').addEventListener('change', filterAvailableSlots);
-    document.getElementById('filter-lecturer').addEventListener('change', filterAvailableSlots);
+    const filterDay = document.getElementById('filter-day');
+    const filterSession = document.getElementById('filter-session');
+    const filterPekan = document.getElementById('filter-pekan');
     
-    // Update kalender saat pilihan dosen atau minggu berubah
-    document.getElementById('calendar-lecturer').addEventListener('change', updateCalendar);
-    document.getElementById('calendar-week').addEventListener('change', updateCalendar);
+    if (filterDay && filterSession && filterPekan) {
+        filterDay.addEventListener('change', filterAvailableSlots);
+        filterSession.addEventListener('change', filterAvailableSlots);
+        filterPekan.addEventListener('change', filterAvailableSlots);
+    }
+    
+    // Update kalender saat pilihan dosen atau pekan berubah
+    const calendarLecturer = document.getElementById('calendar-lecturer');
+    const calendarWeek = document.getElementById('calendar-week');
+    
+    if (calendarLecturer && calendarWeek) {
+        calendarLecturer.addEventListener('change', updateCalendar);
+        calendarWeek.addEventListener('change', updateCalendar);
+    }
+    
+    // Form jadwal mengajar
+    const addJadwalMengajar = document.getElementById('add-jadwal-mengajar');
+    if (addJadwalMengajar) {
+        addJadwalMengajar.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dosen = document.getElementById('jadwal-mengajar-dosen').value;
+            const hari = document.getElementById('jadwal-mengajar-hari').value;
+            const pekan = parseInt(document.getElementById('jadwal-mengajar-pekan').value);
+            const sesi = parseInt(document.getElementById('jadwal-mengajar-sesi').value);
+            
+            addDosenJadwalMengajar(dosen, hari, pekan, sesi);
+        });
+    }
 });
