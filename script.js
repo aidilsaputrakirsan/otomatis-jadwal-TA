@@ -187,7 +187,6 @@ function scheduleTA(jadwalMengajar, timSidang) {
 function generateAvailableSlots(jadwalMengajar, hasilJadwal) {
     const hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
     const sesiList = [1, 2, 3, 4];
-    const ruanganList = ['A308', 'E101', 'E102', 'E103', 'E105'];
     
     // Menyimpan jadwal dosen (mengajar dan sidang)
     const jadwalDosen = {};
@@ -232,60 +231,56 @@ function generateAvailableSlots(jadwalMengajar, hasilJadwal) {
         }
     });
     
-    // Generate slot tersedia
+    // Generate slot tersedia - dikelompokkan berdasarkan hari dan sesi saja
     const slotTersedia = [];
+    const slotDosenTersedia = {};
     
     hariList.forEach(hari => {
         sesiList.forEach(sesi => {
-            ruanganList.forEach(ruangan => {
-                // Cek apakah ruangan sedang digunakan untuk sidang
-                let ruanganTerpakai = false;
-                for (const jadwal of hasilJadwal) {
-                    if (jadwal['Hari'] === hari && jadwal['Sesi'] === sesi) {
-                        ruanganTerpakai = true;
-                        break;
-                    }
+            // Cek apakah slot sedang digunakan untuk sidang
+            let slotTerpakai = false;
+            for (const jadwal of hasilJadwal) {
+                if (jadwal['Hari'] === hari && jadwal['Sesi'] === sesi) {
+                    slotTerpakai = true;
+                    break;
                 }
+            }
+            
+            if (!slotTerpakai) {
+                // Temukan dosen yang tersedia pada slot ini
+                const dosenTersedia = [];
                 
-                // Cek apakah ruangan sedang digunakan untuk mengajar
-                for (const jadwal of jadwalMengajar) {
-                    if (jadwal['Hari'] === hari && jadwal['Sesi'] === sesi && jadwal['Ruangan'] === ruangan) {
-                        ruanganTerpakai = true;
-                        break;
-                    }
-                }
-                
-                if (!ruanganTerpakai) {
-                    // Temukan dosen yang tersedia pada slot ini
-                    const dosenTersedia = [];
+                Object.keys(daftarDosen).forEach(kode => {
+                    const namaLengkap = daftarDosen[kode];
+                    let dosenSibuk = false;
                     
-                    Object.keys(daftarDosen).forEach(kode => {
-                        const namaLengkap = daftarDosen[kode];
-                        let dosenSibuk = false;
-                        
-                        if (jadwalDosen[namaLengkap]) {
-                            for (const jadwal of jadwalDosen[namaLengkap]) {
-                                if (jadwal.hari === hari && jadwal.sesi === sesi) {
-                                    dosenSibuk = true;
-                                    break;
-                                }
+                    if (jadwalDosen[namaLengkap]) {
+                        for (const jadwal of jadwalDosen[namaLengkap]) {
+                            if (jadwal.hari === hari && jadwal.sesi === sesi) {
+                                dosenSibuk = true;
+                                break;
                             }
                         }
-                        
-                        if (!dosenSibuk) {
-                            dosenTersedia.push(kode);
-                        }
-                    });
+                    }
+                    
+                    if (!dosenSibuk) {
+                        dosenTersedia.push(kode);
+                    }
+                });
+                
+                // Hanya tambahkan slot jika ada dosen yang tersedia
+                if (dosenTersedia.length > 0) {
+                    const slotKey = `${hari}-${sesi}`;
+                    slotDosenTersedia[slotKey] = dosenTersedia;
                     
                     slotTersedia.push({
                         'Hari': hari,
                         'Sesi': sesi,
                         'Jam': jadwalJam[sesi],
-                        'Ruangan': ruangan,
                         'Ketersediaan Dosen': dosenTersedia.join(', ')
                     });
                 }
-            });
+            }
         });
     });
     
