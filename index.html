@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Penjadwalan Sidang TA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sistem Penjadwalan Sidang TA</h1>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-button active" data-tab="cari-jadwal">Cari Jadwal Kosong</button>
+            <button class="tab-button" data-tab="cek-dosen">Cek Jadwal Dosen</button>
+            <button class="tab-button" data-tab="jadwalkan">Jadwalkan Sidang</button>
+        </div>
+
+        <div class="tab-content">
+            <!-- Tab Cari Jadwal Kosong -->
+            <div id="cari-jadwal" class="tab-pane active">
+                <h2>Cari Jadwal Kosong Dosen</h2>
+                <div class="form-group">
+                    <label for="cariDosenInput">Nama Dosen:</label>
+                    <input type="text" id="cariDosenInput" placeholder="Masukkan nama lengkap dosen">
+                </div>
+                <button id="cariJadwalBtn" class="primary-btn">Cari Jadwal Kosong</button>
+                <div class="result" id="cariJadwalResult">
+                    <div class="result-content"></div>
+                </div>
+            </div>
+
+            <!-- Tab Cek Jadwal Dosen -->
+            <div id="cek-dosen" class="tab-pane">
+                <h2>Cek Jadwal Dosen</h2>
+                <div class="form-group">
+                    <label for="cekDosenInput">Nama Dosen:</label>
+                    <input type="text" id="cekDosenInput" placeholder="Masukkan nama lengkap dosen">
+                </div>
+                <button id="cekJadwalBtn" class="primary-btn">Cek Jadwal</button>
+                <div class="result" id="cekJadwalResult">
+                    <div class="result-content"></div>
+                </div>
+            </div>
+
+            <!-- Tab Jadwalkan Sidang -->
+            <div id="jadwalkan" class="tab-pane">
+                <h2>Jadwalkan Sidang TA</h2>
+                <div class="form-group">
+                    <label for="nomorSidangInput">Nomor Sidang:</label>
+                    <input type="number" id="nomorSidangInput" placeholder="Masukkan nomor sidang (1, 2, 3, ...)" min="1">
+                </div>
+                <button id="cekKetersediaanBtn" class="primary-btn">Cek Ketersediaan</button>
+                
+                <div id="detailSidang" class="hidden">
+                    <h3>Detail Sidang</h3>
+                    <div id="detailSidangContent"></div>
+                    
+                    <div class="form-group">
+                        <label for="slotSelect">Pilih Slot Waktu:</label>
+                        <select id="slotSelect"></select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ruanganInput">Ruangan:</label>
+                        <input type="text" id="ruanganInput" placeholder="Masukkan ruangan sidang">
+                    </div>
+                    
+                    <button id="jadwalkanBtn" class="primary-btn">Jadwalkan Sidang</button>
+                </div>
+                
+                <div class="result" id="jadwalkanResult">
+                    <div class="result-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loader -->
+    <div id="loader" class="hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
