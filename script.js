@@ -263,8 +263,13 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
         return 0;
     });
     
-    // Slot yang sudah digunakan untuk jadwal sidang
-    const slotSidangTerpakai = {};
+    // Ubah struktur data untuk melacak dosen yang sudah ada jadwal sidang
+    const dosenSidangTerpakai = {}; 
+    
+    // Inisialisasi untuk semua dosen
+    Object.values(daftarDosen).forEach(nama => {
+        dosenSidangTerpakai[nama] = {}; // Untuk setiap dosen, simpan slot waktu yang terpakai
+    });
     
     // PERBAIKAN: Gunakan satu array untuk menyimpan request yang terpenuhi dan tidak
     const requestTerpenuhi = [];
@@ -286,8 +291,15 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
         
         // Jika ada request, jadwalkan MUTLAK tanpa mempertimbangkan bentrok jadwal mengajar
         if (requestTanggal && requestSesi) {
+            // Log untuk debugging
+            console.log(`Processing request for ${namaMahasiswa}:`);
+            console.log(` - Original date value: ${requestTanggal} (${typeof requestTanggal})`);
+            
             const requestDate = parseDate(requestTanggal);
+            console.log(` - Parsed date: ${requestDate}`);
+            
             const dayIndex = requestDate.getDay();
+            console.log(` - Day of week: ${dayIndex}`);
             
             // Jika weekend, sesuaikan ke hari kerja terdekat
             let adjustedDayIndex = dayIndex;
@@ -298,21 +310,29 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
             const formattedRequestDate = formatDate(requestDate);
             const requestKey = `${requestDay}-${formattedRequestDate}`;
             
-            // Log untuk debug
-            console.log(`${namaMahasiswa}: Request tanggal ${requestTanggal} sesi ${requestSesi} -> key: ${requestKey}`);
+            console.log(` - Adjusted day: ${requestDay}`);
+            console.log(` - Formatted date: ${formattedRequestDate}`);
+            console.log(` - Request key: ${requestKey}`);
             
             // Cek apakah key tersebut ada dalam jadwalHariTanggal
             if (jadwalHariTanggal[requestKey]) {
-                // Cek apakah slot sudah digunakan untuk sidang lain
-                const slotKey = `${requestKey}-${requestSesi}`;
-                if (slotSidangTerpakai[slotKey]) {
-                    console.log(`${namaMahasiswa}: Request bentrok dengan sidang lain (${requestDay}, ${formattedRequestDate}, sesi ${requestSesi})`);
+                // Cek apakah ada dosen dalam tim yang sudah punya jadwal sidang pada slot ini
+                let dosenBentrok = [];
+                for (const dosen of dosenTim) {
+                    const slotKey = `${requestKey}-${requestSesi}`;
+                    if (dosenSidangTerpakai[dosen] && dosenSidangTerpakai[dosen][slotKey]) {
+                        dosenBentrok.push(dosen);
+                    }
+                }
+                
+                if (dosenBentrok.length > 0) {
+                    console.log(`${namaMahasiswa}: Request bentrok dengan sidang lain - Dosen ${dosenBentrok.join(', ')} sudah ada jadwal pada slot ini`);
                     requestTidakTerpenuhi.push({
                         mahasiswa: namaMahasiswa,
                         tanggal: formattedRequestDate,
                         hari: requestDay,
                         sesi: requestSesi,
-                        alasan: 'Bentrok dengan sidang lain'
+                        alasan: `Dosen bentrok: ${dosenBentrok.join(', ')}`
                     });
                     continue;
                 }
@@ -335,8 +355,14 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
                     console.log(`${namaMahasiswa}: Request diterima tanpa bentrok`);
                 }
                 
-                // Tandai slot sebagai digunakan untuk sidang (MUTLAK)
-                slotSidangTerpakai[slotKey] = true;
+                // Tandai dosen sebagai terpakai pada slot ini
+                for (const dosen of dosenTim) {
+                    if (!dosenSidangTerpakai[dosen]) {
+                        dosenSidangTerpakai[dosen] = {};
+                    }
+                    const slotKey = `${requestKey}-${requestSesi}`;
+                    dosenSidangTerpakai[dosen][slotKey] = true;
+                }
                 
                 // Hapus jadwal mengajar pada slot ini (jika ada)
                 jadwalHariTanggal[requestKey].slots[requestSesi].tersedia = false;
@@ -430,40 +456,39 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
                 // Cek setiap sesi dalam hari ini
                 for (let s = 1; s <= 4; s++) {
                     const slotKey = `${key}-${s}`;
-                    // Jika slot belum digunakan untuk sidang dan tersedia
-                    if (!slotSidangTerpakai[slotKey] && jadwalHariTanggal[key].slots[s].tersedia) {
-                        // Cek apakah ada dosen tim yang mengajar pada slot ini
-                        let dosenMengajar = [];
+                    
+                    // Cek apakah ada dosen tim yang sudah terpakai pada slot ini
+                    let dosenBentrok = [];
+                    for (const dosen of dosenTim) {
+                        if (dosenSidangTerpakai[dosen] && dosenSidangTerpakai[dosen][slotKey]) {
+                            dosenBentrok.push(dosen);
+                        }
+                    }
+                    
+                    // Jika tidak ada bentrok dengan jadwal sidang dosen, gunakan slot ini
+                    if (dosenBentrok.length === 0 && jadwalHariTanggal[key].slots[s].tersedia) {
+                        // Tandai dosen sebagai terpakai pada slot ini
                         for (const dosen of dosenTim) {
-                            if (dosenToJadwal[dosen]) {
-                                for (const jadwal of dosenToJadwal[dosen]) {
-                                    if (jadwal.hariTanggalKey === key && jadwal.sesi === s) {
-                                        dosenMengajar.push(dosen);
-                                    }
-                                }
+                            if (!dosenSidangTerpakai[dosen]) {
+                                dosenSidangTerpakai[dosen] = {};
                             }
+                            dosenSidangTerpakai[dosen][slotKey] = true;
                         }
                         
-                        // Jika tidak ada bentrok dengan jadwal mengajar, gunakan slot ini
-                        if (dosenMengajar.length === 0) {
-                            // Tandai slot ini sebagai digunakan
-                            slotSidangTerpakai[slotKey] = true;
-                            
-                            // Simpan key dan sesi
-                            hariTanggalKey = key;
-                            sesi = s;
-                            slotDitemukan = true;
-                            
-                            // Keluar dari loop
-                            return true;
-                        }
+                        // Simpan key dan sesi
+                        hariTanggalKey = key;
+                        sesi = s;
+                        slotDitemukan = true;
+                        
+                        // Keluar dari loop
+                        return true;
                     }
                 }
                 // Lanjut ke hari berikutnya
                 return false;
             });
         
-        // Jika tidak ada slot tanpa bentrok, cari slot dengan bentrok (tapi tidak digunakan untuk sidang)
+        // Jika tidak ada slot tanpa bentrok, cari slot dengan bentrok jadwal mengajar
         if (!slotDitemukan) {
             Object.keys(jadwalHariTanggal)
                 .sort((a, b) => {
@@ -474,10 +499,24 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
                     // Cek setiap sesi dalam hari ini
                     for (let s = 1; s <= 4; s++) {
                         const slotKey = `${key}-${s}`;
-                        // Jika slot belum digunakan untuk sidang
-                        if (!slotSidangTerpakai[slotKey]) {
-                            // Tandai slot ini sebagai digunakan
-                            slotSidangTerpakai[slotKey] = true;
+                        
+                        // Cek apakah ada dosen tim yang sudah terpakai pada slot ini
+                        let dosenBentrok = [];
+                        for (const dosen of dosenTim) {
+                            if (dosenSidangTerpakai[dosen] && dosenSidangTerpakai[dosen][slotKey]) {
+                                dosenBentrok.push(dosen);
+                            }
+                        }
+                        
+                        // Jika tidak ada bentrok dengan jadwal sidang dosen (tapi mungkin bentrok dengan jadwal mengajar), gunakan slot ini
+                        if (dosenBentrok.length === 0) {
+                            // Tandai dosen sebagai terpakai pada slot ini
+                            for (const dosen of dosenTim) {
+                                if (!dosenSidangTerpakai[dosen]) {
+                                    dosenSidangTerpakai[dosen] = {};
+                                }
+                                dosenSidangTerpakai[dosen][slotKey] = true;
+                            }
                             
                             // Simpan key dan sesi
                             hariTanggalKey = key;
@@ -548,14 +587,23 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
 function generateAvailableSlots(jadwalMengajar, hasilJadwal, jadwalHariTanggal) {
     const slotTersedia = [];
     
-    // Set untuk menyimpan slot yang sudah digunakan untuk sidang
-    const slotSidangTerpakai = new Set();
+    // Set untuk menyimpan dosen yang sudah dijadwalkan per slot
+    const dosenPerSlot = {};
     
-    // Tandai slot yang sudah digunakan untuk sidang
+    // Tandai dosen yang sudah dijadwalkan per slot
     hasilJadwal.forEach(jadwal => {
         if (jadwal.Hari !== 'Tidak ada slot tersedia') {
             const key = `${jadwal.Hari}-${jadwal.Tanggal}-${jadwal.Sesi}`;
-            slotSidangTerpakai.add(key);
+            
+            if (!dosenPerSlot[key]) {
+                dosenPerSlot[key] = new Set();
+            }
+            
+            // Tambahkan semua dosen dalam tim
+            if (jadwal['Pembimbing 1']) dosenPerSlot[key].add(jadwal['Pembimbing 1']);
+            if (jadwal['Pembimbing 2']) dosenPerSlot[key].add(jadwal['Pembimbing 2']);
+            if (jadwal['Penguji 1']) dosenPerSlot[key].add(jadwal['Penguji 1']);
+            if (jadwal['Penguji 2']) dosenPerSlot[key].add(jadwal['Penguji 2']);
         }
     });
     
@@ -565,21 +613,30 @@ function generateAvailableSlots(jadwalMengajar, hasilJadwal, jadwalHariTanggal) 
         
         // Iterasi semua sesi dalam hari ini
         for (let sesi = 1; sesi <= 4; sesi++) {
-            // Lewati slot yang sudah digunakan untuk sidang
+            // Cek dosen yang tersedia di slot ini
             const key = `${hariTanggal.hari}-${hariTanggal.tanggal}-${sesi}`;
-            if (slotSidangTerpakai.has(key)) {
-                continue;
-            }
+            const dosenTerpakai = dosenPerSlot[key] || new Set();
             
-            // Tambahkan ke daftar slot tersedia
-            slotTersedia.push({
-                'Hari': hariTanggal.hari,
-                'Tanggal': hariTanggal.tanggal,
-                'Pekan': hariTanggal.pekan,
-                'Sesi': sesi,
-                'Jam': jadwalJam[sesi],
-                'Ketersediaan Dosen': 'Semua Dosen' // Untuk sederhananya, anggap semua dosen tersedia
+            // Cari dosen yang tersedia (tidak terpakai di slot ini)
+            const dosenTersedia = [];
+            Object.keys(daftarDosen).forEach(kode => {
+                const namaLengkap = daftarDosen[kode];
+                if (!dosenTerpakai.has(namaLengkap)) {
+                    dosenTersedia.push(kode);
+                }
             });
+            
+            // Hanya tambahkan slot jika ada dosen yang tersedia
+            if (dosenTersedia.length > 0) {
+                slotTersedia.push({
+                    'Hari': hariTanggal.hari,
+                    'Tanggal': hariTanggal.tanggal,
+                    'Pekan': hariTanggal.pekan,
+                    'Sesi': sesi,
+                    'Jam': jadwalJam[sesi],
+                    'Ketersediaan Dosen': dosenTersedia.join(', ')
+                });
+            }
         }
     });
     
