@@ -41,85 +41,19 @@
                                 <button id="download-template" class="btn btn-primary">Download Template</button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Di tab "Upload Data" -->
-                    <div class="mb-3">
-                        <label for="jumlah-minggu" class="form-label">Jumlah Minggu Penjadwalan:</label>
-                        <input type="number" id="jumlah-minggu" class="form-control" value="6" min="1" max="16">
-                        <small class="form-text text-muted">Tentukan berapa minggu ke depan yang akan dijadwalkan.</small>
-                    </div>
-                    
-                    <!-- Form untuk menambah jadwal mengajar -->
-                    <div class="card mt-4">
-                        <div class="card-header">
-                        <h5>Kelola Jadwal Mengajar Dosen</h5>
+                        
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5>Pengaturan Penjadwalan</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="jumlah-minggu" class="form-label">Jumlah Minggu Penjadwalan:</label>
+                                    <input type="number" id="jumlah-minggu" class="form-control" value="6" min="1" max="16">
+                                    <small class="form-text text-muted">Tentukan berapa minggu ke depan yang akan dijadwalkan.</small>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-body">
-                        <form id="add-jadwal-mengajar" class="row g-3">
-                            <div class="col-md-6">
-                            <label for="jadwal-mengajar-dosen" class="form-label">Pilih Dosen:</label>
-                            <select id="jadwal-mengajar-dosen" class="form-select" required></select>
-                            </div>
-                            <div class="col-md-6">
-                            <label for="jadwal-mengajar-hari" class="form-label">Hari:</label>
-                            <select id="jadwal-mengajar-hari" class="form-select" required>
-                                <option value="Senin">Senin</option>
-                                <option value="Selasa">Selasa</option>
-                                <option value="Rabu">Rabu</option>
-                                <option value="Kamis">Kamis</option>
-                                <option value="Jumat">Jumat</option>
-                            </select>
-                            </div>
-                            <div class="col-md-4">
-                            <label for="jadwal-mengajar-pekan" class="form-label">Pekan:</label>
-                            <select id="jadwal-mengajar-pekan" class="form-select" required>
-                                <option value="1">Pekan 1</option>
-                                <option value="2">Pekan 2</option>
-                                <option value="3">Pekan 3</option>
-                                <option value="4">Pekan 4</option>
-                                <option value="5">Pekan 5</option>
-                                <option value="6">Pekan 6</option>
-                                <option value="7">Pekan 7</option>
-                                <option value="8">Pekan 8</option>
-                                <option value="9">Pekan 9</option>
-                                <option value="10">Pekan 10</option>
-                                <option value="11">Pekan 11</option>
-                                <option value="12">Pekan 12</option>
-                                <option value="13">Pekan 13</option>
-                                <option value="14">Pekan 14</option>
-                                <option value="15">Pekan 15</option>
-                                <option value="16">Pekan 16</option>
-                            </select>
-                            </div>
-                            <div class="col-md-4">
-                            <label for="jadwal-mengajar-sesi" class="form-label">Sesi:</label>
-                            <select id="jadwal-mengajar-sesi" class="form-select" required>
-                                <option value="1">Sesi 1 (07:30-09:10)</option>
-                                <option value="2">Sesi 2 (09:20-11:00)</option>
-                                <option value="3">Sesi 3 (13:50-15:30)</option>
-                                <option value="4">Sesi 4 (15:50-17:30)</option>
-                            </select>
-                            </div>
-                            <div class="col-md-4 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary">Tambah Jadwal</button>
-                            </div>
-                        </form>
-                        </div>
-                    </div>
-                    
-                    <!-- Di tab "Slot Tersedia" -->
-                    <div class="col-md-4">
-                        <label for="filter-pekan" class="form-label">Filter Pekan:</label>
-                        <select id="filter-pekan" class="form-select">
-                        <option value="all">Semua Pekan</option>
-                        <option value="1">Pekan 1</option>
-                        <option value="2">Pekan 2</option>
-                        <option value="3">Pekan 3</option>
-                        <option value="4">Pekan 4</option>
-                        <option value="5">Pekan 5</option>
-                        <option value="6">Pekan 6</option>
-                        </select>
                     </div>
                     
                     <div class="col-md-6">
@@ -137,6 +71,21 @@
                                     <p>Drag & drop file Excel di sini atau</p>
                                     <input type="file" id="file-input" accept=".xlsx" class="form-control">
                                 </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5>Petunjuk Penggunaan</h5>
+                            </div>
+                            <div class="card-body">
+                                <ol>
+                                    <li>Download template Excel dan isi data jadwal mengajar dan tim sidang</li>
+                                    <li>Atur tanggal mulai sidang dan jumlah minggu penjadwalan</li>
+                                    <li>Upload file Excel yang sudah diisi</li>
+                                    <li>Lihat hasil penjadwalan di tab "Hasil Penjadwalan"</li>
+                                </ol>
+                                <p><strong>Catatan:</strong> Request jadwal dari Excel akan diprioritaskan secara mutlak, bahkan jika bentrok dengan jadwal mengajar dosen.</p>
                             </div>
                         </div>
                     </div>
@@ -175,7 +124,7 @@
                 <p>Jadwal yang masih tersedia untuk kegiatan lain:</p>
                 
                 <div class="row mb-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="filter-day" class="form-label">Filter Hari:</label>
                         <select id="filter-day" class="form-select">
                             <option value="all">Semua Hari</option>
@@ -186,7 +135,7 @@
                             <option value="Jumat">Jumat</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="filter-session" class="form-label">Filter Sesi:</label>
                         <select id="filter-session" class="form-select">
                             <option value="all">Semua Sesi</option>
@@ -196,7 +145,19 @@
                             <option value="4">Sesi 4 (15:50-17:30)</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label for="filter-pekan" class="form-label">Filter Pekan:</label>
+                        <select id="filter-pekan" class="form-select">
+                            <option value="all">Semua Pekan</option>
+                            <option value="1">Pekan 1</option>
+                            <option value="2">Pekan 2</option>
+                            <option value="3">Pekan 3</option>
+                            <option value="4">Pekan 4</option>
+                            <option value="5">Pekan 5</option>
+                            <option value="6">Pekan 6</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label for="filter-lecturer" class="form-label">Filter Dosen:</label>
                         <select id="filter-lecturer" class="form-select">
                             <option value="all">Semua Dosen</option>
@@ -211,6 +172,7 @@
                             <tr>
                                 <th>Hari</th>
                                 <th>Tanggal</th>
+                                <th>Pekan</th>
                                 <th>Sesi</th>
                                 <th>Jam</th>
                                 <th>Ketersediaan Dosen</th>
