@@ -1005,20 +1005,681 @@ class GenetikPenjadwalan {
 
 // PERBAIKAN: Algoritma Penjadwalan yang Lebih Baik
 function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
-    console.log(`Mulai penjadwalan dengan ${timSidang.length} mahasiswa`);
+    console.log(`Mulai penjadwalan dengan ${timSidang.length} mahasiswa dan ${Object.keys(daftarDosen).length} dosen`);
     
-    // Gunakan algoritma genetik untuk menjadwalkan sidang
-    const genetik = new GenetikPenjadwalan(timSidang, jadwalHariTanggal, jadwalMengajar);
-    const solusiTerbaik = genetik.cariSolusi();
+    // PERBAIKAN: Menyimpan beban awal tiap dosen dalam tim sidang
+    const bebanAwalDosen = {};
+    Object.values(daftarDosen).forEach(nama => {
+        bebanAwalDosen[nama] = 0;
+    });
     
-    // Konversi solusi menjadi format hasil jadwal
-    const hasilJadwal = genetik.konversiKeHasilJadwal(solusiTerbaik);
+    timSidang.forEach(tim => {
+        const pembimbing1 = tim['Pembimbing 1'];
+        const pembimbing2 = tim['Pembimbing 2'];
+        const penguji1 = tim['Penguji 1'];
+        const penguji2 = tim['Penguji 2'];
+        
+        bebanAwalDosen[pembimbing1] = (bebanAwalDosen[pembimbing1] || 0) + 1;
+        bebanAwalDosen[pembimbing2] = (bebanAwalDosen[pembimbing2] || 0) + 1;
+        bebanAwalDosen[penguji1] = (bebanAwalDosen[penguji1] || 0) + 1;
+        bebanAwalDosen[penguji2] = (bebanAwalDosen[penguji2] || 0) + 1;
+    });
     
-    // Tampilkan ringkasan
-    const terjadwal = hasilJadwal.filter(h => h.Hari !== 'Tidak ada slot tersedia').length;
-    console.log(`Penjadwalan selesai: ${terjadwal}/${timSidang.length} mahasiswa berhasil dijadwalkan`);
+    // Tampilkan beban awal dosen
+    console.log("Beban awal dosen (jumlah keterlibatan dalam tim):");
+    Object.entries(bebanAwalDosen)
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([dosen, beban]) => {
+            console.log(`- ${dosen}: ${beban} tim`);
+        });
+    
+    // PERBAIKAN: Menyiapkan mapping jadwal mengajar setiap dosen
+    const dosenToJadwal = {};
+    Object.values(daftarDosen).forEach(nama => {
+        dosenToJadwal[nama] = [];
+    });
+    
+    // Tandai jadwal mengajar dosen
+    jadwalMengajar.forEach(jadwal => {
+        const kodeDosen = jadwal['Kode Dosen'];
+        const namaLengkap = daftarDosen[kodeDosen];
+        
+        if (!dosenToJadwal[namaLengkap]) {
+            dosenToJadwal[namaLengkap] = [];
+        }
+        
+        Object.keys(jadwalHariTanggal).forEach(key => {
+            if (jadwalHariTanggal[key].hari === jadwal.Hari) {
+                const sesi = parseInt(jadwal.Sesi);
+                dosenToJadwal[namaLengkap].push({
+                    hariTanggalKey: key,
+                    sesi: sesi
+                });
+                
+                // Tandai slot ini sebagai tidak tersedia untuk jadwal sidang
+                jadwalHariTanggal[key].slots[sesi].tersedia = false;
+                jadwalHariTanggal[key].slots[sesi].jadwalMengajar.push({
+                    dosen: namaLengkap,
+                    mataKuliah: jadwal['Mata Kuliah'],
+                    ruangan: jadwal['Ruangan']
+                });
+            }
+        });
+    });
+    
+    // PERBAIKAN: Lebih banyak variabel debugging
+    let totalRequestDipenuhi = 0;
+    let totalRequest = 0;
+
+    // PERBAIKAN: Urutkan mahasiswa berdasarkan constraint terbanyak
+    // (1. Mahasiswa dengan request, 2. Mahasiswa dengan dosen berbeban tinggi)
+    const sortedTimSidang = timSidang.map((tim, index) => {
+        const hasRequest = tim['Request Tanggal'] && tim['Request Sesi'];
+        if (hasRequest) totalRequest++;
+        
+        // Hitung jumlah beban total dosen dalam tim
+        const dosenTim = [tim['Pembimbing 1'], tim['Pembimbing 2'], tim['Penguji 1'], tim['Penguji 2']];
+        const totalBebanDosen = dosenTim.reduce((sum, dosen) => sum + (bebanAwalDosen[dosen] || 0), 0);
+        
+        return {
+            tim: tim,
+            index: index,
+            hasRequest: hasRequest,
+            totalBebanDosen: totalBebanDosen
+        };
+    }).sort((a, b) => {
+        // Prioritaskan request terlebih dahulu
+        if (a.hasRequest && !b.hasRequest) return -1;
+        if (!a.hasRequest && b.hasRequest) return 1;
+        
+        // Jika keduanya request atau keduanya tidak request, prioritaskan tim dengan dosen berbeban tinggi
+        return b.totalBebanDosen - a.totalBebanDosen;
+    });
+    
+    console.log(`Total mahasiswa dengan request: ${totalRequest} dari ${timSidang.length}`);
+    
+    // Hasil jadwal
+    const hasilJadwal = new Array(timSidang.length);
+    
+    // Jadwal dosen terpakai untuk sidang
+    const jadwalDosenTerpakai = {};
+    Object.values(daftarDosen).forEach(nama => {
+        jadwalDosenTerpakai[nama] = [];
+    });
+    
+    // PERBAIKAN: Tambahkan variable untuk membantu backtracking
+    let assignedCount = 0;
+    const maxRetries = 3; // Jumlah maksimum percobaan re-scheduling per mahasiswa
+    
+    // PERBAIKAN: Implementasi CSP dengan backtracking
+    // Fungsi rekursif untuk assign tim sidang ke slot
+    function assignTimToSlot(timIndex) {
+        // Basis kasus: semua tim telah dijadwalkan
+        if (timIndex >= sortedTimSidang.length) {
+            return true;
+        }
+        
+        const timData = sortedTimSidang[timIndex];
+        const tim = timData.tim;
+        const originalIndex = timData.index;
+        
+        const namaMahasiswa = tim['Nama Mahasiswa / NIM'];
+        const pembimbing1 = tim['Pembimbing 1'];
+        const pembimbing2 = tim['Pembimbing 2'];
+        const penguji1 = tim['Penguji 1'];
+        const penguji2 = tim['Penguji 2'];
+        const requestTanggal = tim['Request Tanggal'];
+        const requestSesi = tim['Request Sesi'] ? parseInt(tim['Request Sesi']) : null;
+        
+        const dosenTim = [pembimbing1, pembimbing2, penguji1, penguji2];
+        
+        // Cek apakah ada request jadwal
+        let slotDitemukan = false;
+        let isRequest = false;
+        
+        // PERBAIKAN: Array untuk menyimpan semua slot yang bisa digunakan
+        let candidateSlots = [];
+        
+        if (requestTanggal && requestSesi) {
+            // Cari key untuk hari-tanggal yang sesuai dengan request
+            const requestDate = parseDate(requestTanggal);
+            const dayIndex = requestDate.getDay();
+            const requestDay = indexToHari[dayIndex === 0 ? 1 : (dayIndex === 6 ? 5 : dayIndex)]; // Fallback sesuai
+            const formattedRequestDate = formatDate(requestDate);
+            const requestKey = `${requestDay}-${formattedRequestDate}`;
+            
+            // Cek apakah slot request tersedia
+            if (jadwalHariTanggal[requestKey] && 
+                jadwalHariTanggal[requestKey].slots[requestSesi] && 
+                jadwalHariTanggal[requestKey].slots[requestSesi].tersedia) {
+                
+                // Cek apakah ada dosen yang mengajar pada slot ini
+                let adaYangMengajar = false;
+                for (const dosen of dosenTim) {
+                    if (dosenToJadwal[dosen]) {
+                        for (const jadwal of dosenToJadwal[dosen]) {
+                            if (jadwal.hariTanggalKey === requestKey && jadwal.sesi === requestSesi) {
+                                adaYangMengajar = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (adaYangMengajar) break;
+                }
+                
+                // Cek apakah ada dosen yang sudah terjadwal sidang pada slot ini
+                let adaYangSidang = false;
+                for (const dosen of dosenTim) {
+                    if (jadwalDosenTerpakai[dosen]) {
+                        for (const jadwal of jadwalDosenTerpakai[dosen]) {
+                            if (jadwal.hariTanggalKey === requestKey && jadwal.sesi === requestSesi) {
+                                adaYangSidang = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (adaYangSidang) break;
+                }
+                
+                // Jika tidak ada konflik, gunakan slot request
+                if (!adaYangMengajar && !adaYangSidang) {
+                    // Tambahkan ke kandidat dengan prioritas tertinggi
+                    candidateSlots.push({
+                        hariTanggalKey: requestKey,
+                        sesi: requestSesi,
+                        isRequest: true,
+                        score: 1000 // Skor tinggi untuk request
+                    });
+                    
+                    // PERBAIKAN: Pesan debug untuk request yang dipenuhi
+                    console.log(`Request ${namaMahasiswa} untuk tanggal ${requestTanggal} sesi ${requestSesi} mungkin bisa dipenuhi`);
+                }
+            } else {
+                // PERBAIKAN: Pesan debug untuk request yang tidak tersedia
+                console.log(`Request ${namaMahasiswa} untuk tanggal ${requestTanggal} sesi ${requestSesi} TIDAK TERSEDIA: ${!jadwalHariTanggal[requestKey] ? 'Tanggal tidak ada' : 'Slot tidak tersedia'}`);
+            }
+        }
+        
+        // Jika tidak ada request atau request tidak bisa dipenuhi, cari slot tersedia
+        // PERBAIKAN: Temukan semua slot tersedia
+        Object.keys(jadwalHariTanggal).forEach(hariTanggalKey => {
+            for (let sesi = 1; sesi <= 4; sesi++) {
+                if (jadwalHariTanggal[hariTanggalKey].slots[sesi].tersedia) {
+                    // Cek konflik dengan jadwal mengajar
+                    let adaYangMengajar = false;
+                    for (const dosen of dosenTim) {
+                        if (dosenToJadwal[dosen]) {
+                            for (const jadwal of dosenToJadwal[dosen]) {
+                                if (jadwal.hariTanggalKey === hariTanggalKey && jadwal.sesi === sesi) {
+                                    adaYangMengajar = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (adaYangMengajar) break;
+                    }
+                    
+                    // Cek konflik dengan jadwal sidang lain
+                    let adaYangSidang = false;
+                    for (const dosen of dosenTim) {
+                        if (jadwalDosenTerpakai[dosen]) {
+                            for (const jadwal of jadwalDosenTerpakai[dosen]) {
+                                if (jadwal.hariTanggalKey === hariTanggalKey && jadwal.sesi === sesi) {
+                                    adaYangSidang = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (adaYangSidang) break;
+                    }
+                    
+                    // Jika tidak ada konflik, tambahkan ke kandidat
+                    if (!adaYangMengajar && !adaYangSidang) {
+                        // Hitung skor untuk slot ini
+                        let score = 0;
+                        
+                        // PERBAIKAN: Lebih detail dalam menghitung skor
+                        // Preferensi untuk hari kerja awal (Senin-Selasa)
+                        const hari = jadwalHariTanggal[hariTanggalKey].hari;
+                        if (hari === 'Senin' || hari === 'Selasa') {
+                            score += 5;
+                        } else if (hari === 'Rabu') {
+                            score += 3; 
+                        }
+                        
+                        // Preferensi untuk sesi tengah (2 dan 3)
+                        if (sesi === 2 || sesi === 3) {
+                            score += 3;
+                        }
+                        
+                        // Preferensi untuk tanggal yang lebih awal
+                        const tanggal = new Date(jadwalHariTanggal[hariTanggalKey].date);
+                        const selisihHari = Math.floor((tanggal - new Date(jadwalHariTanggal[Object.keys(jadwalHariTanggal)[0]].date)) / (24 * 60 * 60 * 1000));
+                        score -= selisihHari;
+                        
+                        // Tambahkan ke kandidat
+                        candidateSlots.push({
+                            hariTanggalKey: hariTanggalKey,
+                            sesi: sesi,
+                            isRequest: false,
+                            score: score
+                        });
+                    }
+                }
+            }
+        });
+        
+        // Urutkan kandidat berdasarkan skor
+        candidateSlots.sort((a, b) => b.score - a.score);
+        
+        // PERBAIKAN: Debug jumlah slot kandidat
+        console.log(`${namaMahasiswa}: ${candidateSlots.length} slot kandidat ditemukan`);
+        
+        // PERBAIKAN: Implementasi backtracking
+        // Coba setiap kandidat slot secara berurutan
+        for (let retryCount = 0; retryCount < Math.min(maxRetries, candidateSlots.length); retryCount++) {
+            const slot = candidateSlots[retryCount];
+            
+            if (!slot) continue; // Skip jika tidak ada slot kandidat lagi
+            
+            const hariTanggalKey = slot.hariTanggalKey;
+            const sesi = slot.sesi;
+            const isRequest = slot.isRequest;
+            
+            // Tandai slot ini sebagai digunakan
+            jadwalHariTanggal[hariTanggalKey].slots[sesi].tersedia = false;
+            jadwalHariTanggal[hariTanggalKey].slots[sesi].jadwalSidang = {
+                mahasiswa: namaMahasiswa,
+                dosen: dosenTim,
+                isRequest: isRequest
+            };
+            
+            // Update jadwal dosen terpakai
+            dosenTim.forEach(dosen => {
+                jadwalDosenTerpakai[dosen].push({
+                    hariTanggalKey: hariTanggalKey,
+                    sesi: sesi
+                });
+            });
+            
+            // Tambahkan ke hasil
+            hasilJadwal[originalIndex] = {
+                'Nama Mahasiswa': namaMahasiswa,
+                'Pembimbing 1': pembimbing1,
+                'Pembimbing 2': pembimbing2,
+                'Penguji 1': penguji1,
+                'Penguji 2': penguji2,
+                'Hari': jadwalHariTanggal[hariTanggalKey].hari,
+                'Tanggal': jadwalHariTanggal[hariTanggalKey].tanggal,
+                'Sesi': sesi,
+                'Jam': jadwalJam[sesi],
+                'IsRequest': isRequest
+            };
+            
+            if (isRequest) {
+                totalRequestDipenuhi++;
+            }
+            
+            assignedCount++;
+            
+            // Mencoba melanjutkan ke tim berikutnya
+            if (assignTimToSlot(timIndex + 1)) {
+                return true; // Solusi ditemukan!
+            }
+            
+            // Jika tidak berhasil, backtrack: batalkan penugasan saat ini
+            // dan coba slot berikutnya
+            assignedCount--;
+            if (isRequest) {
+                totalRequestDipenuhi--;
+            }
+            
+            // Hapus dari jadwal dosen terpakai
+            dosenTim.forEach(dosen => {
+                const idx = jadwalDosenTerpakai[dosen].findIndex(j => 
+                    j.hariTanggalKey === hariTanggalKey && j.sesi === sesi);
+                if (idx !== -1) {
+                    jadwalDosenTerpakai[dosen].splice(idx, 1);
+                }
+            });
+            
+            // Tandai slot sebagai tersedia lagi
+            jadwalHariTanggal[hariTanggalKey].slots[sesi].tersedia = true;
+            jadwalHariTanggal[hariTanggalKey].slots[sesi].jadwalSidang = null;
+            
+            // PERBAIKAN: Pesan debug backtracking
+            console.log(`Backtracking dari ${namaMahasiswa} (coba slot alternatif #${retryCount + 1})`);
+        }
+        
+        // Jika semua slot gagal, buat hasil "Tidak ada slot tersedia"
+        hasilJadwal[originalIndex] = {
+            'Nama Mahasiswa': namaMahasiswa,
+            'Pembimbing 1': pembimbing1,
+            'Pembimbing 2': pembimbing2,
+            'Penguji 1': penguji1,
+            'Penguji 2': penguji2,
+            'Hari': 'Tidak ada slot tersedia',
+            'Tanggal': '-',
+            'Sesi': '-',
+            'Jam': '-',
+            'IsRequest': false
+        };
+        
+        // Lanjutkan ke tim berikutnya meskipun yang ini gagal
+        return assignTimToSlot(timIndex + 1);
+    }
+    
+    // PERBAIKAN: Coba pendekatan kombinatorial dengan relaksasi bertahap
+    console.time('Waktu Penjadwalan');
+    
+    // Pertama: Coba menjadwalkan semua tim
+    console.log("Tahap 1: Mencoba menjadwalkan semua mahasiswa");
+    let result = assignTimToSlot(0);
+    
+    // PERBAIKAN: Jika belum optimal (< 80% terjadwal), coba relaksasi dan pendekatan lain
+    const threshold = Math.floor(timSidang.length * 0.8); // 80% mahasiswa terjadwal
+    
+    if (assignedCount < threshold) {
+        console.log(`Penjadwalan kurang optimal: ${assignedCount}/${timSidang.length}. Mencoba pendekatan kedua...`);
+        
+        // Reset semua jadwal sidang
+        Object.keys(jadwalHariTanggal).forEach(key => {
+            for (let sesi = 1; sesi <= 4; sesi++) {
+                if (jadwalHariTanggal[key].slots[sesi].jadwalSidang) {
+                    jadwalHariTanggal[key].slots[sesi].tersedia = true;
+                    jadwalHariTanggal[key].slots[sesi].jadwalSidang = null;
+                }
+            }
+        });
+        
+        // Reset jadwal dosen terpakai
+        Object.keys(jadwalDosenTerpakai).forEach(dosen => {
+            jadwalDosenTerpakai[dosen] = [];
+        });
+        
+        assignedCount = 0;
+        totalRequestDipenuhi = 0;
+        
+        // PENDEKATAN ALTERNATIF: Greedy + Constraint Relaxation
+        console.log("Tahap 2: Pendekatan greedy dengan relaksasi constraint");
+        
+        // Implementasi pendekatan greedy sederhana (tanpa backtracking)
+        for (const timData of sortedTimSidang) {
+            const tim = timData.tim;
+            const originalIndex = timData.index;
+            
+            const namaMahasiswa = tim['Nama Mahasiswa / NIM'];
+            const pembimbing1 = tim['Pembimbing 1'];
+            const pembimbing2 = tim['Pembimbing 2'];
+            const penguji1 = tim['Penguji 1'];
+            const penguji2 = tim['Penguji 2'];
+            const requestTanggal = tim['Request Tanggal'];
+            const requestSesi = tim['Request Sesi'] ? parseInt(tim['Request Sesi']) : null;
+            
+            const dosenTim = [pembimbing1, pembimbing2, penguji1, penguji2];
+            
+            let slotDitemukan = false;
+            let slotTerpilih = null;
+            let isRequest = false;
+            
+            // Coba penuhi request terlebih dahulu
+            if (requestTanggal && requestSesi) {
+                const requestDate = parseDate(requestTanggal);
+                const dayIndex = requestDate.getDay();
+                const requestDay = indexToHari[dayIndex === 0 ? 1 : (dayIndex === 6 ? 5 : dayIndex)];
+                const formattedRequestDate = formatDate(requestDate);
+                const requestKey = `${requestDay}-${formattedRequestDate}`;
+                
+                if (jadwalHariTanggal[requestKey] && 
+                    jadwalHariTanggal[requestKey].slots[requestSesi] && 
+                    jadwalHariTanggal[requestKey].slots[requestSesi].tersedia) {
+                    
+                    // Buat versi relaksasi: hanya memeriksa bentrok jadwal mengajar
+                    let adaYangMengajar = false;
+                    for (const dosen of dosenTim) {
+                        if (dosenToJadwal[dosen]) {
+                            for (const jadwal of dosenToJadwal[dosen]) {
+                                if (jadwal.hariTanggalKey === requestKey && jadwal.sesi === requestSesi) {
+                                    adaYangMengajar = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (adaYangMengajar) break;
+                    }
+                    
+                    // Versi relaksasi: izinkan hingga 1 dosen yang sidang bentrok
+                    let jumlahDosenSidangBentrok = 0;
+                    let dosenKonflik = [];
+                    
+                    for (const dosen of dosenTim) {
+                        if (jadwalDosenTerpakai[dosen]) {
+                            for (const jadwal of jadwalDosenTerpakai[dosen]) {
+                                if (jadwal.hariTanggalKey === requestKey && jadwal.sesi === requestSesi) {
+                                    jumlahDosenSidangBentrok++;
+                                    dosenKonflik.push(dosen);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Relaksasi: izinkan maksimal 1 dosen konflik untuk request
+                    const MAX_KONFLIK_REQUEST = 1;
+                    
+                    if (!adaYangMengajar && jumlahDosenSidangBentrok <= MAX_KONFLIK_REQUEST) {
+                        slotTerpilih = {
+                            hariTanggalKey: requestKey,
+                            sesi: requestSesi
+                        };
+                        slotDitemukan = true;
+                        isRequest = true;
+                        
+                        if (jumlahDosenSidangBentrok > 0) {
+                            console.log(`Request ${namaMahasiswa} dipenuhi dengan relaksasi (${jumlahDosenSidangBentrok} dosen konflik: ${dosenKonflik.join(", ")})`);
+                        } else {
+                            console.log(`Request ${namaMahasiswa} dipenuhi tanpa konflik`);
+                        }
+                    }
+                }
+            }
+            
+            // Jika request tidak bisa dipenuhi, cari slot lain
+            if (!slotDitemukan) {
+                const candidateSlots = [];
+                
+                Object.keys(jadwalHariTanggal).forEach(hariTanggalKey => {
+                    for (let sesi = 1; sesi <= 4; sesi++) {
+                        if (jadwalHariTanggal[hariTanggalKey].slots[sesi].tersedia) {
+                            // Versi relaksasi: cek apakah ada konflik jadwal mengajar
+                            let adaYangMengajar = false;
+                            for (const dosen of dosenTim) {
+                                if (dosenToJadwal[dosen]) {
+                                    for (const jadwal of dosenToJadwal[dosen]) {
+                                        if (jadwal.hariTanggalKey === hariTanggalKey && jadwal.sesi === sesi) {
+                                            adaYangMengajar = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (adaYangMengajar) break;
+                            }
+                            
+                            // Relaksasi: hitung dosen yang sudah sidang pada slot ini
+                            let jumlahDosenSidangBentrok = 0;
+                            let dosenKonflik = [];
+                            
+                            for (const dosen of dosenTim) {
+                                if (jadwalDosenTerpakai[dosen]) {
+                                    for (const jadwal of jadwalDosenTerpakai[dosen]) {
+                                        if (jadwal.hariTanggalKey === hariTanggalKey && jadwal.sesi === sesi) {
+                                            jumlahDosenSidangBentrok++;
+                                            dosenKonflik.push(dosen);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Relaksasi: izinkan maksimal 2 dosen konflik untuk non-request
+                            const MAX_KONFLIK_NORMAL = 2;
+                            
+                            if (!adaYangMengajar && jumlahDosenSidangBentrok <= MAX_KONFLIK_NORMAL) {
+                                // Hitung skor untuk slot ini
+                                let score = 100 - (jumlahDosenSidangBentrok * 40); // Penalti besar untuk konflik
+                                
+                                // Preferensi hari dan sesi
+                                const hari = jadwalHariTanggal[hariTanggalKey].hari;
+                                if (hari === 'Senin' || hari === 'Selasa') score += 5;
+                                if (sesi === 2 || sesi === 3) score += 3;
+                                
+                                // Tambahkan ke kandidat
+                                candidateSlots.push({
+                                    hariTanggalKey: hariTanggalKey,
+                                    sesi: sesi,
+                                    score: score,
+                                    konflik: jumlahDosenSidangBentrok,
+                                    dosenKonflik: dosenKonflik
+                                });
+                            }
+                        }
+                    }
+                });
+                
+                // Urutkan berdasarkan skor (tertinggi dulu)
+                candidateSlots.sort((a, b) => b.score - a.score);
+                
+                // Ambil slot terbaik jika ada
+                if (candidateSlots.length > 0) {
+                    slotTerpilih = candidateSlots[0];
+                    slotDitemukan = true;
+                    
+                    if (slotTerpilih.konflik > 0) {
+                        console.log(`${namaMahasiswa} dijadwalkan dengan ${slotTerpilih.konflik} dosen konflik: ${slotTerpilih.dosenKonflik.join(", ")}`);
+                    }
+                }
+            }
+            
+            // Jika ditemukan slot, jadwalkan
+            if (slotDitemukan) {
+                const hariTanggalKey = slotTerpilih.hariTanggalKey;
+                const sesi = slotTerpilih.sesi;
+                
+                // Tandai slot ini sebagai digunakan
+                jadwalHariTanggal[hariTanggalKey].slots[sesi].tersedia = false;
+                jadwalHariTanggal[hariTanggalKey].slots[sesi].jadwalSidang = {
+                    mahasiswa: namaMahasiswa,
+                    dosen: dosenTim,
+                    isRequest: isRequest
+                };
+                
+                // Update jadwal dosen terpakai (meskipun mungkin ada konflik)
+                dosenTim.forEach(dosen => {
+                    jadwalDosenTerpakai[dosen].push({
+                        hariTanggalKey: hariTanggalKey,
+                        sesi: sesi
+                    });
+                });
+                
+                // Tambahkan ke hasil
+                hasilJadwal[originalIndex] = {
+                    'Nama Mahasiswa': namaMahasiswa,
+                    'Pembimbing 1': pembimbing1,
+                    'Pembimbing 2': pembimbing2,
+                    'Penguji 1': penguji1,
+                    'Penguji 2': penguji2,
+                    'Hari': jadwalHariTanggal[hariTanggalKey].hari,
+                    'Tanggal': jadwalHariTanggal[hariTanggalKey].tanggal,
+                    'Sesi': sesi,
+                    'Jam': jadwalJam[sesi],
+                    'IsRequest': isRequest
+                };
+                
+                if (isRequest) {
+                    totalRequestDipenuhi++;
+                }
+                
+                assignedCount++;
+            } else {
+                // Tidak menemukan slot
+                hasilJadwal[originalIndex] = {
+                    'Nama Mahasiswa': namaMahasiswa,
+                    'Pembimbing 1': pembimbing1,
+                    'Pembimbing 2': pembimbing2,
+                    'Penguji 1': penguji1,
+                    'Penguji 2': penguji2,
+                    'Hari': 'Tidak ada slot tersedia',
+                    'Tanggal': '-',
+                    'Sesi': '-',
+                    'Jam': '-',
+                    'IsRequest': false
+                };
+            }
+        }
+    }
+    
+    console.timeEnd('Waktu Penjadwalan');
+    console.log(`Penjadwalan selesai: ${assignedCount}/${timSidang.length} mahasiswa berhasil dijadwalkan (${Math.round(assignedCount/timSidang.length*100)}%)`);
+    console.log(`Request terpenuhi: ${totalRequestDipenuhi}/${totalRequest} (${Math.round(totalRequestDipenuhi/totalRequest*100)}%)`);
+    
+    // Hitung beban akhir dosen
+    const bebanAkhirDosen = {};
+    Object.values(daftarDosen).forEach(nama => {
+        bebanAkhirDosen[nama] = 0;
+    });
+    
+    hasilJadwal.forEach(h => {
+        if (h['Hari'] !== 'Tidak ada slot tersedia') {
+            bebanAkhirDosen[h['Pembimbing 1']] = (bebanAkhirDosen[h['Pembimbing 1']] || 0) + 1;
+            bebanAkhirDosen[h['Pembimbing 2']] = (bebanAkhirDosen[h['Pembimbing 2']] || 0) + 1;
+            bebanAkhirDosen[h['Penguji 1']] = (bebanAkhirDosen[h['Penguji 1']] || 0) + 1;
+            bebanAkhirDosen[h['Penguji 2']] = (bebanAkhirDosen[h['Penguji 2']] || 0) + 1;
+        }
+    });
+    
+    console.log('Beban akhir dosen:');
+    Object.entries(bebanAkhirDosen).sort((a, b) => b[1] - a[1]).forEach(([dosen, beban]) => {
+        console.log(`- ${dosen}: ${beban} sidang`);
+    });
     
     return hasilJadwal;
+}
+
+// Tambahan: Cek apakah data request valid
+function cekRequestValid(timSidang, jadwalHariTanggal) {
+    const requestTidakValid = [];
+    
+    timSidang.forEach(tim => {
+        const namaMahasiswa = tim['Nama Mahasiswa / NIM'];
+        const requestTanggal = tim['Request Tanggal'];
+        const requestSesi = tim['Request Sesi'] ? parseInt(tim['Request Sesi']) : null;
+        
+        if (requestTanggal && requestSesi) {
+            const requestDate = parseDate(requestTanggal);
+            const dayIndex = requestDate.getDay();
+            const requestDay = indexToHari[dayIndex === 0 ? 1 : (dayIndex === 6 ? 5 : dayIndex)]; // Fallback sesuai
+            const formattedRequestDate = formatDate(requestDate);
+            const requestKey = `${requestDay}-${formattedRequestDate}`;
+            
+            if (!jadwalHariTanggal[requestKey]) {
+                requestTidakValid.push({
+                    mahasiswa: namaMahasiswa,
+                    tanggal: requestTanggal,
+                    sesi: requestSesi,
+                    alasan: 'Tanggal tidak ada dalam rentang penjadwalan'
+                });
+            }
+        }
+    });
+    
+    if (requestTidakValid.length > 0) {
+        console.log('PERHATIAN: Ditemukan request yang tidak valid:');
+        requestTidakValid.forEach(req => {
+            console.log(`- ${req.mahasiswa}: Tanggal ${req.tanggal} Sesi ${req.sesi} (${req.alasan})`);
+        });
+    }
+    
+    return requestTidakValid;
 }
 
 // PERBAIKAN: Fungsi untuk membuat daftar slot tersedia setelah penjadwalan
@@ -1145,8 +1806,26 @@ function processExcelFile(file) {
         const dateObj = new Date(tanggalMulai);
         const formattedDate = formatDate(dateObj);
         
+        // Tampilkan info dasar
+        console.log(`Total jadwal mengajar: ${jadwalMengajar.length}`);
+        console.log(`Total tim sidang: ${timSidang.length}`);
+        console.log(`Tanggal mulai sidang: ${formattedDate}`);
+        
         // Inisialisasi jadwal hari-tanggal
         jadwalHariTanggal = inisialisasiTanggal(tanggalMulai, timSidang.length);
+        
+        // Cek apakah ada request yang tidak valid
+        const requestTidakValid = cekRequestValid(timSidang, jadwalHariTanggal);
+        
+        // Jika ada request tidak valid, tampilkan peringatan
+        if (requestTidakValid.length > 0) {
+            const pesanPesan = [
+                'Perhatian: Beberapa request jadwal tidak valid:',
+                ...requestTidakValid.map(req => `- ${req.mahasiswa}: Tanggal ${req.tanggal} Sesi ${req.sesi}`)
+            ].join('\n');
+            
+            alert(pesanPesan + '\n\nPenjadwalan tetap akan dilanjutkan.');
+        }
         
         // Lakukan penjadwalan
         console.time('Waktu Penjadwalan');
@@ -1177,22 +1856,6 @@ function processExcelFile(file) {
         // Tampilkan statistik penjadwalan
         const terjadwal = hasilJadwal.filter(h => h.Hari !== 'Tidak ada slot tersedia').length;
         console.log(`Ringkasan: ${terjadwal} dari ${timSidang.length} mahasiswa berhasil dijadwalkan (${Math.round(terjadwal/timSidang.length*100)}%)`);
-        
-        // Hitung beban per dosen
-        const bebanPerDosen = {};
-        hasilJadwal.forEach(h => {
-            if (h.Hari !== 'Tidak ada slot tersedia') {
-                bebanPerDosen[h['Pembimbing 1']] = (bebanPerDosen[h['Pembimbing 1']] || 0) + 1;
-                bebanPerDosen[h['Pembimbing 2']] = (bebanPerDosen[h['Pembimbing 2']] || 0) + 1;
-                bebanPerDosen[h['Penguji 1']] = (bebanPerDosen[h['Penguji 1']] || 0) + 1;
-                bebanPerDosen[h['Penguji 2']] = (bebanPerDosen[h['Penguji 2']] || 0) + 1;
-            }
-        });
-        
-        console.log('Beban per dosen:');
-        Object.entries(bebanPerDosen).sort((a, b) => b[1] - a[1]).forEach(([dosen, beban]) => {
-            console.log(`- ${dosen}: ${beban} sidang`);
-        });
     };
     
     reader.readAsArrayBuffer(file);
