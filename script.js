@@ -1,7 +1,7 @@
 // script.js
 document.addEventListener('DOMContentLoaded', function() {
     // Konfigurasi URL Google Apps Script Web App
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbzzyHJlllUli-SAcKbqdf7QpKFG_pipx44-jtaly87iSA77aUkMPmEDA3ThJXptZg0/exec'; // Ganti dengan URL GAS Web App Anda
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbzBrSITsiABxFVa0li32ve9q6yu4wareZ8toFNPKQxgYG8JvaBXK6MO_RwFrWdMBX6H/exec'; // Ganti dengan URL GAS Web App Anda
     
     // Inisialisasi elemen-elemen UI
     initTabs();
