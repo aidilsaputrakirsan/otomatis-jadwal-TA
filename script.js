@@ -22,10 +22,10 @@ for (const [kode, nama] of Object.entries(daftarDosen)) {
 
 // Jadwal jam berdasarkan sesi
 const jadwalJam = {
-    1: '07:30-09:10',
-    2: '09:20-11:00',
-    3: '13:50-15:30',
-    4: '15:50-17:30'
+    1: '08:00-09:30',
+    2: '10:30-12:00',
+    3: '13:00-14:30',
+    4: '16:00-17:30'
 };
 
 // Mapping hari ke indeks
