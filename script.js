@@ -46,6 +46,13 @@ const indexToHari = {
     5: 'Jumat'
 };
 
+// Dapatkan tanggal libur dari input
+const tanggalLiburInput = document.getElementById('tanggal-libur').value;
+const tanggalLibur = tanggalLiburInput ? tanggalLiburInput.split(',') : [];
+
+// Gunakan dalam fungsi inisialisasi tanggal
+jadwalHariTanggal = inisialisasiTanggal(tanggalMulai, mingguValid ? jumlahMingguInput : null, tanggalLibur);
+
 // Menyimpan jadwal
 let jadwalMengajar = [];
 let timSidang = [];
@@ -103,7 +110,7 @@ function formatDate(date) {
 }
 
 // Inisialisasi tanggal untuk penjadwalan
-function inisialisasiTanggal(tanggalMulai, jumlahMingguParam) {
+function inisialisasiTanggal(tanggalMulai, jumlahMingguParam, tanggalibur = []) {
     // Konversi string tanggal ke objek Date
     tanggalMulaiSidang = new Date(tanggalMulai);
     
@@ -147,6 +154,10 @@ function inisialisasiTanggal(tanggalMulai, jumlahMingguParam) {
         
         // Format tanggal: DD/MM/YYYY
         const tanggalStr = formatDate(currentDate);
+        if (tanggalLibur.includes(tanggalStr)) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        continue;
+    }
         
         // Buat key unik untuk setiap hari+tanggal
         const key = `${namaHari}-${tanggalStr}`;
