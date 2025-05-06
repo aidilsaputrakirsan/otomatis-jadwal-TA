@@ -4,14 +4,14 @@ const daftarDosen = {
     'YTW': 'Yuyun Tri Wiranti, S.Kom., M.MT',
     'PDA': 'Ir. I Putu Deny Arthawan Sugih Prabowo, M.Eng',
     'VKA': 'Vika Fitratunnany Insanittaqwa, S.Kom., M.Kom',
-    'HLH': 'Henokh Lugo Hariyanto, S.Si., M.Sc.',
-    'MIA': 'M. Ihsan Alfani Putera, S.T.,Kom, M.Kom',
-    'DAP': 'Dwi Arief Prambudi, S.Kom., M.Kom.',
-    'NNA': 'Nursanti Novi Arisa, S.Pd., M.Kom.',
-    'ADL': 'Aidi Saputra Kirsan, S.ST., M.T.,Kom.',
-    'HIS': 'Hendy Indrawan Sunardi, S.Kom, M.Eng.',
-    'AWS': 'Arif Wicaksono, M.Kom',
-    'SRN': 'Sri Rahayu Natasia, S.Komp., M.Si., M.Sc.'
+    'HLH': 'Henokh Lugo Hariyanto, S.Si., M.Sc',
+    'MIA': 'M. Ihsan Alfani Putera, S.Tr.,Kom, M.Kom',
+    'DAP': 'Dwi Arief Prambudi, S.Kom., M.Kom',
+    'NNA': 'Nursanti Novi Arisa, S.Pd., M.Kom',
+    'ADL': 'Aidi Saputra Kirsan, S.ST., M.Tr.Kom',
+    'HIS': 'Hendy Indrawan Sunardi, S.Kom, M.Eng',
+    'AWS': 'Arif Wicaksono, S.Kom., M.Kom',
+    'SRN': 'Sri Rahayu Natasia, S.Komp., M.Si., M.Sc'
 };
 
 // Jadwal jam berdasarkan sesi
