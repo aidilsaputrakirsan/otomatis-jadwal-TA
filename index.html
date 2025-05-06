@@ -64,7 +64,7 @@
                 <table id="result-table" class="table table-striped table-bordered">
                     <thead>
                         <tr>
-                            <th>Tim</th>
+                            <th>Nama Mahasiswa</th>
                             <th>Pembimbing 1</th>
                             <th>Pembimbing 2</th>
                             <th>Penguji 1</th>
@@ -82,44 +82,21 @@
     </div>
 
     <script>
-        // Fungsi untuk membuat template Excel
-        function createTemplate() {
-            // Buat workbook baru
-            const wb = XLSX.utils.book_new();
-            
-            // Template jadwal mengajar
-            const jadwalData = [
-                ['Hari', 'Sesi', 'Jam', 'Ruangan', 'Mata Kuliah', 'Kode Dosen'],
-                ['Senin', 1, '07:30-08:20', 'A308', 'Statistika', 'DNA'],
-                ['Senin', 1, '07:30-08:20', 'E101', 'Manajemen dan Organisasi B', 'YTW'],
-                // Contoh data lainnya
-            ];
-            const jadwalSheet = XLSX.utils.aoa_to_sheet(jadwalData);
-            XLSX.utils.book_append_sheet(wb, jadwalSheet, 'JadwalMengajar');
-            
-            // Template tim sidang
-            const timData = [
-                ['Pembimbing 1', 'Pembimbing 2', 'Penguji 1', 'Penguji 2'],
-                ['DNA', 'YTW', 'PDA', 'VKA'],
-                ['YTW', 'HLH', 'MIA', 'DAP'],
-                // Contoh data lainnya
-            ];
-            const timSheet = XLSX.utils.aoa_to_sheet(timData);
-            XLSX.utils.book_append_sheet(wb, timSheet, 'TimSidang');
-            
-            // Daftar kode dosen
-            const dosenData = [
-                ['Kode', 'Nama Lengkap'],
-                ['DNA', 'Dwi Nur Amalia, S.Kom., M.Kom'],
-                ['YTW', 'Yuyun Tri Wiranti, S.Kom., M.MT'],
-                // Daftar kode lainnya
-            ];
-            const dosenSheet = XLSX.utils.aoa_to_sheet(dosenData);
-            XLSX.utils.book_append_sheet(wb, dosenSheet, 'KodeDosen');
-            
-            // Download file
-            XLSX.writeFile(wb, 'template_sidang_ta.xlsx');
-        }
+        // Daftar kode dosen dan nama lengkap (hardcoded)
+        const daftarDosen = {
+            'DNA': 'Dwi Nur Amalia, S.Kom., M.Kom',
+            'YTW': 'Yuyun Tri Wiranti, S.Kom., M.MT',
+            'PDA': 'Ir. I Putu Deny Arthawan Sugih Prabowo, M.Eng',
+            'VKA': 'Vika Fitratunnany Insanittaqwa, S.Kom., M.Kom',
+            'HLH': 'Henokh Lugo Hariyanto, S.Si., M.Sc.',
+            'MIA': 'M. Ihsan Alfani Putera, S.T.,Kom, M.Kom',
+            'DAP': 'Dwi Arief Prambudi, S.Kom., M.Kom.',
+            'NNA': 'Nursanti Novi Arisa, S.Pd., M.Kom.',
+            'ADL': 'Aidi Saputra Kirsan, S.ST., M.T.,Kom.',
+            'HIS': 'Hendy Indrawan Sunardi, S.Kom, M.Eng.',
+            'AWS': 'Arif Wicaksono, M.Kom',
+            'SRN': 'Sri Rahayu Natasia, S.Komp., M.Si., M.Sc.'
+        };
         
         // Jadwal jam berdasarkan sesi
         const jadwalJam = {
@@ -128,6 +105,36 @@
             3: '13:50-15:30',
             4: '15:50-17:30'
         };
+        
+        // Fungsi untuk membuat template Excel
+        function createTemplate() {
+            // Buat workbook baru
+            const wb = XLSX.utils.book_new();
+            
+            // Template jadwal mengajar
+            const jadwalData = [
+                ['Hari', 'Sesi', 'Jam', 'Ruangan', 'Mata Kuliah', 'Kode Dosen'],
+                ['Senin', 1, '07:30-09:10', 'A308', 'Statistika', 'SRN'],
+                ['Senin', 1, '07:30-09:10', 'E101', 'Manajemen dan Organisasi B', 'YTW'],
+                ['Senin', 1, '07:30-09:10', 'E102', 'Rekayasa Perangkat Lunak B', 'SRN'],
+                ['Senin', 2, '10:20-12:00', 'A308', 'Desain Interaksi Antarmuka dan Pengalaman Pengguna B', 'MIA'],
+                ['Senin', 2, '10:20-12:00', 'E101', 'Perencanaan Manajemen Proyek Teknologi Informasi A', 'YTW']
+            ];
+            const jadwalSheet = XLSX.utils.aoa_to_sheet(jadwalData);
+            XLSX.utils.book_append_sheet(wb, jadwalSheet, 'JadwalMengajar');
+            
+            // Template tim sidang
+            const timData = [
+                ['Nama Mahasiswa / NIM', 'Pembimbing 1', 'Pembimbing 2', 'Penguji 1', 'Penguji 2'],
+                ['Athifah Shyla Maritza / 10211021', 'Dwi Nur Amalia, S.Kom., M.Kom', 'Yuyun Tri Wiranti, S.Kom., M.MT', 'Ir. I Putu Deny Arthawan Sugih Prabowo, M.Eng', 'Vika Fitratunnany Insanittaqwa, S.Kom., M.Kom'],
+                ['Muhammad Rizky Afriza / 10211022', 'Yuyun Tri Wiranti, S.Kom., M.MT', 'Henokh Lugo Hariyanto, S.Si., M.Sc.', 'M. Ihsan Alfani Putera, S.T.,Kom, M.Kom', 'Dwi Arief Prambudi, S.Kom., M.Kom.']
+            ];
+            const timSheet = XLSX.utils.aoa_to_sheet(timData);
+            XLSX.utils.book_append_sheet(wb, timSheet, 'TimSidang');
+            
+            // Download file
+            XLSX.writeFile(wb, 'template_sidang_ta.xlsx');
+        }
         
         // Algoritma penjadwalan
         function scheduleTA(jadwalMengajar, timSidang) {
@@ -138,8 +145,26 @@
             // Jadwal yang sudah digunakan oleh dosen
             const jadwalDosenTerpakai = {};
             
+            // Buat pemetaan nama lengkap dosen ke jadwal mengajar mereka
+            const dosenToJadwal = {};
+            
+            jadwalMengajar.forEach(jadwal => {
+                const kodeDosen = jadwal['Kode Dosen'];
+                const namaLengkap = daftarDosen[kodeDosen];
+                
+                if (!dosenToJadwal[namaLengkap]) {
+                    dosenToJadwal[namaLengkap] = [];
+                }
+                
+                dosenToJadwal[namaLengkap].push({
+                    hari: jadwal['Hari'],
+                    sesi: jadwal['Sesi']
+                });
+            });
+            
             // Untuk setiap tim sidang
             timSidang.forEach((tim, idx) => {
+                const namaMahasiswa = tim['Nama Mahasiswa / NIM'];
                 const pembimbing1 = tim['Pembimbing 1'];
                 const pembimbing2 = tim['Pembimbing 2'];
                 const penguji1 = tim['Penguji 1'];
@@ -154,16 +179,17 @@
                     sesiList.forEach(sesi => {
                         // Cek apakah ada dosen yang mengajar pada slot ini
                         let adaYangMengajar = false;
+                        
                         for (const dosen of dosenTim) {
-                            const jadwalDosen = jadwalMengajar.filter(j => 
-                                j['Kode Dosen'] === dosen && 
-                                j['Hari'] === hari && 
-                                j['Sesi'] === sesi
-                            );
-                            
-                            if (jadwalDosen.length > 0) {
-                                adaYangMengajar = true;
-                                break;
+                            if (dosenToJadwal[dosen]) {
+                                const jadwalDosen = dosenToJadwal[dosen].filter(j => 
+                                    j.hari === hari && j.sesi === sesi
+                                );
+                                
+                                if (jadwalDosen.length > 0) {
+                                    adaYangMengajar = true;
+                                    break;
+                                }
                             }
                         }
                         
@@ -200,7 +226,7 @@
                     });
                     
                     hasilJadwal.push({
-                        'Tim': idx + 1,
+                        'Nama Mahasiswa': namaMahasiswa,
                         'Pembimbing 1': pembimbing1,
                         'Pembimbing 2': pembimbing2,
                         'Penguji 1': penguji1,
@@ -211,7 +237,7 @@
                     });
                 } else {
                     hasilJadwal.push({
-                        'Tim': idx + 1,
+                        'Nama Mahasiswa': namaMahasiswa,
                         'Pembimbing 1': pembimbing1,
                         'Pembimbing 2': pembimbing2,
                         'Penguji 1': penguji1,
@@ -236,14 +262,44 @@
                 
                 // Baca jadwal mengajar
                 const jadwalSheet = workbook.Sheets['JadwalMengajar'];
-                const jadwalData = XLSX.utils.sheet_to_json(jadwalSheet);
+                const jadwalData = XLSX.utils.sheet_to_json(jadwalSheet, { header: 1 });
+                
+                // Konversi data ke format yang dibutuhkan
+                const headers = jadwalData[0];
+                const jadwalFormatted = [];
+                
+                for (let i = 1; i < jadwalData.length; i++) {
+                    const row = jadwalData[i];
+                    if (row.length > 0) {
+                        const item = {};
+                        for (let j = 0; j < headers.length; j++) {
+                            item[headers[j]] = row[j];
+                        }
+                        jadwalFormatted.push(item);
+                    }
+                }
                 
                 // Baca tim sidang
                 const timSheet = workbook.Sheets['TimSidang'];
-                const timData = XLSX.utils.sheet_to_json(timSheet);
+                const timData = XLSX.utils.sheet_to_json(timSheet, { header: 1 });
+                
+                // Konversi data ke format yang dibutuhkan
+                const timHeaders = timData[0];
+                const timFormatted = [];
+                
+                for (let i = 1; i < timData.length; i++) {
+                    const row = timData[i];
+                    if (row.length > 0) {
+                        const item = {};
+                        for (let j = 0; j < timHeaders.length; j++) {
+                            item[timHeaders[j]] = row[j];
+                        }
+                        timFormatted.push(item);
+                    }
+                }
                 
                 // Lakukan penjadwalan
-                const hasilJadwal = scheduleTA(jadwalData, timData);
+                const hasilJadwal = scheduleTA(jadwalFormatted, timFormatted);
                 
                 // Tampilkan hasil
                 displayResults(hasilJadwal);
@@ -263,9 +319,10 @@
             // Isi tabel dengan hasil
             results.forEach(result => {
                 const row = document.createElement('tr');
+                const mahasiswa = result['Nama Mahasiswa'].split(' / ')[0]; // Ambil nama mahasiswa saja tanpa NIM
                 
                 row.innerHTML = `
-                    <td>${result.Tim}</td>
+                    <td>${mahasiswa}</td>
                     <td>${result['Pembimbing 1']}</td>
                     <td>${result['Pembimbing 2']}</td>
                     <td>${result['Penguji 1']}</td>
