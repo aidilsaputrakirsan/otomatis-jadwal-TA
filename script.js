@@ -446,7 +446,7 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
             });
             console.log(`Total slot tersedia secara umum: ${totalSlot}`);
         }
-
+        //
         // Pilih slot pertama yang tersedia
         if (slotTersedia.length > 0) {
             // Hitung skor untuk setiap slot tersedia
