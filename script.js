@@ -62,21 +62,33 @@ function getWeekNumber(date) {
     return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
 }
 
-// Helper function untuk mendapatkan tanggal dari string (DD/MM/YYYY)
+// Perbaikan fungsi parseDate
 function parseDate(dateStr) {
-    // Periksa apakah dateStr adalah string
-    if (typeof dateStr !== 'string') {
-        console.error('dateStr bukan string:', dateStr);
-        return new Date(); // Kembalikan tanggal saat ini sebagai fallback
+    // Jika dateStr adalah angka (serial date Excel)
+    if (typeof dateStr === 'number') {
+        // Konversi serial date Excel ke Date JavaScript
+        // Excel: 1 = 1 Jan 1900, JavaScript: 1 = 1 Jan 1970
+        // Selisih: 25569 hari
+        const excelEpoch = new Date(1900, 0, 1);
+        const jsDate = new Date(excelEpoch);
+        jsDate.setDate(excelEpoch.getDate() + dateStr - 2); // -2 karena koreksi leap year Excel
+        return jsDate;
     }
     
-    try {
-        const [day, month, year] = dateStr.split('/').map(Number);
-        return new Date(year, month - 1, day);
-    } catch (error) {
-        console.error('Error saat parsing tanggal:', error);
-        return new Date(); // Kembalikan tanggal saat ini sebagai fallback
+    // Jika dateStr adalah string (format DD/MM/YYYY)
+    if (typeof dateStr === 'string' && dateStr.includes('/')) {
+        try {
+            const [day, month, year] = dateStr.split('/').map(Number);
+            return new Date(year, month - 1, day);
+        } catch (error) {
+            console.error('Error saat parsing tanggal string:', error);
+            return new Date(); // Fallback ke tanggal saat ini
+        }
     }
+    
+    // Fallback: kembalikan tanggal saat ini
+    console.error('dateStr bukan format yang didukung:', dateStr);
+    return new Date();
 }
 
 // Helper function untuk format tanggal ke string (DD/MM/YYYY)
@@ -225,7 +237,7 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
         });
     });
     
-    // Urutkan mahasiswa berdasarkan request - mahasiswa dengan request didahulukan
+    // Urutkan tim sidang: prioritaskan yang memiliki request jadwal
     const sortedTimSidang = [...timSidang].sort((a, b) => {
         const aHasRequest = a['Request Tanggal'] && a['Request Sesi'];
         const bHasRequest = b['Request Tanggal'] && b['Request Sesi'];
@@ -235,8 +247,12 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
         return 0;
     });
     
+    // Untuk debugging
+    console.log("Total hari yang tersedia:", Object.keys(jadwalHariTanggal).length);
+    console.log("Total mahasiswa:", sortedTimSidang.length);
+    
     // Untuk setiap tim sidang
-    sortedTimSidang.forEach(tim => {
+    sortedTimSidang.forEach((tim, index) => {
         const namaMahasiswa = tim['Nama Mahasiswa / NIM'];
         const pembimbing1 = tim['Pembimbing 1'];
         const pembimbing2 = tim['Pembimbing 2'];
@@ -375,6 +391,8 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
                 }
             }
         });
+
+        console.log(`Mahasiswa #${index+1}: ${namaMahasiswa} - Slot tersedia: ${slotTersedia.length}`);
         
         // Pilih slot pertama yang tersedia
         if (slotTersedia.length > 0) {
