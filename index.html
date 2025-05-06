@@ -5,399 +5,220 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Penjadwalan Sidang TA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        .drop-area {
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            margin: 20px 0;
-            background-color: #f8f9fa;
-        }
-        .drop-area.highlight {
-            border-color: #007bff;
-            background-color: #e8f4ff;
-        }
-        .result-table {
-            margin-top: 30px;
-        }
-    </style>
 </head>
 <body>
     <div class="container mt-5">
         <h1 class="text-center mb-4">Sistem Penjadwalan Sidang TA</h1>
         
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Template Excel</h5>
+        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">Upload Data</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="result-tab" data-bs-toggle="tab" data-bs-target="#result" type="button" role="tab" aria-controls="result" aria-selected="false">Hasil Penjadwalan</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="available-tab" data-bs-toggle="tab" data-bs-target="#available" type="button" role="tab" aria-controls="available" aria-selected="false">Slot Tersedia</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar" type="button" role="tab" aria-controls="calendar" aria-selected="false">Kalender</button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="myTabContent">
+            <!-- Tab Upload Data -->
+            <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Template Excel</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>Download template Excel untuk mengisi jadwal mengajar dan tim sidang TA:</p>
+                                <button id="download-template" class="btn btn-primary">Download Template</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <p>Download template Excel untuk mengisi jadwal mengajar dan tim sidang TA:</p>
-                        <button id="download-template" class="btn btn-primary">Download Template</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Upload Data</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Upload file Excel yang sudah diisi:</p>
-                        <div id="drop-area" class="drop-area">
-                            <p>Drag & drop file Excel di sini atau</p>
-                            <input type="file" id="file-input" accept=".xlsx" class="form-control">
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Upload Data</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>Upload file Excel yang sudah diisi:</p>
+                                <div id="drop-area" class="drop-area">
+                                    <p>Drag & drop file Excel di sini atau</p>
+                                    <input type="file" id="file-input" accept=".xlsx" class="form-control">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <div id="result-section" class="mt-5 d-none">
-            <h2>Hasil Penjadwalan</h2>
-            <p>Jadwal sidang TA yang direkomendasikan:</p>
-            <div class="table-responsive">
-                <table id="result-table" class="table table-striped table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Nama Mahasiswa</th>
-                            <th>Pembimbing 1</th>
-                            <th>Pembimbing 2</th>
-                            <th>Penguji 1</th>
-                            <th>Penguji 2</th>
-                            <th>Hari</th>
-                            <th>Sesi</th>
-                            <th>Jam</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+            
+            <!-- Tab Hasil Penjadwalan -->
+            <div class="tab-pane fade" id="result" role="tabpanel" aria-labelledby="result-tab">
+                <h2>Hasil Penjadwalan</h2>
+                <p>Jadwal sidang TA yang direkomendasikan:</p>
+                <div class="table-responsive">
+                    <table id="result-table" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Nama Mahasiswa</th>
+                                <th>Pembimbing 1</th>
+                                <th>Pembimbing 2</th>
+                                <th>Penguji 1</th>
+                                <th>Penguji 2</th>
+                                <th>Hari</th>
+                                <th>Sesi</th>
+                                <th>Jam</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Data akan diisi oleh JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <button id="export-result" class="btn btn-success mt-3">Export Hasil ke Excel</button>
             </div>
-            <button id="export-result" class="btn btn-success mt-3">Export Hasil ke Excel</button>
+            
+            <!-- Tab Slot Tersedia -->
+            <div class="tab-pane fade" id="available" role="tabpanel" aria-labelledby="available-tab">
+                <h2>Slot Tersedia</h2>
+                <p>Jadwal yang masih tersedia untuk kegiatan lain:</p>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="filter-day" class="form-label">Filter Hari:</label>
+                        <select id="filter-day" class="form-select">
+                            <option value="all">Semua Hari</option>
+                            <option value="Senin">Senin</option>
+                            <option value="Selasa">Selasa</option>
+                            <option value="Rabu">Rabu</option>
+                            <option value="Kamis">Kamis</option>
+                            <option value="Jumat">Jumat</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filter-session" class="form-label">Filter Sesi:</label>
+                        <select id="filter-session" class="form-select">
+                            <option value="all">Semua Sesi</option>
+                            <option value="1">Sesi 1 (07:30-09:10)</option>
+                            <option value="2">Sesi 2 (09:20-11:00)</option>
+                            <option value="3">Sesi 3 (13:50-15:30)</option>
+                            <option value="4">Sesi 4 (15:50-17:30)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filter-lecturer" class="form-label">Filter Dosen:</label>
+                        <select id="filter-lecturer" class="form-select">
+                            <option value="all">Semua Dosen</option>
+                            <!-- Opsi dosen akan diisi oleh JavaScript -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table id="available-table" class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Hari</th>
+                                <th>Sesi</th>
+                                <th>Jam</th>
+                                <th>Ruangan</th>
+                                <th>Ketersediaan Dosen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Data akan diisi oleh JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <button id="export-available" class="btn btn-success mt-3">Export Slot Tersedia ke Excel</button>
+            </div>
+            
+            <!-- Tab Kalender -->
+            <div class="tab-pane fade" id="calendar" role="tabpanel" aria-labelledby="calendar-tab">
+                <h2>Visualisasi Kalender</h2>
+                <p>Visualisasi jadwal dalam bentuk kalender mingguan:</p>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="calendar-lecturer" class="form-label">Pilih Dosen:</label>
+                        <select id="calendar-lecturer" class="form-select">
+                            <option value="all">Semua Dosen</option>
+                            <!-- Opsi dosen akan diisi oleh JavaScript -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <div class="empty-cell"></div>
+                        <div class="day-header">Senin</div>
+                        <div class="day-header">Selasa</div>
+                        <div class="day-header">Rabu</div>
+                        <div class="day-header">Kamis</div>
+                        <div class="day-header">Jumat</div>
+                    </div>
+                    <div class="calendar-body">
+                        <!-- Sesi 1: 07:30-09:10 -->
+                        <div class="time-cell">Sesi 1<br>07:30-09:10</div>
+                        <div class="calendar-cell" id="cell-1-1"></div>
+                        <div class="calendar-cell" id="cell-2-1"></div>
+                        <div class="calendar-cell" id="cell-3-1"></div>
+                        <div class="calendar-cell" id="cell-4-1"></div>
+                        <div class="calendar-cell" id="cell-5-1"></div>
+                        
+                        <!-- Sesi 2: 09:20-11:00 -->
+                        <div class="time-cell">Sesi 2<br>09:20-11:00</div>
+                        <div class="calendar-cell" id="cell-1-2"></div>
+                        <div class="calendar-cell" id="cell-2-2"></div>
+                        <div class="calendar-cell" id="cell-3-2"></div>
+                        <div class="calendar-cell" id="cell-4-2"></div>
+                        <div class="calendar-cell" id="cell-5-2"></div>
+                        
+                        <!-- Sesi 3: 13:50-15:30 -->
+                        <div class="time-cell">Sesi 3<br>13:50-15:30</div>
+                        <div class="calendar-cell" id="cell-1-3"></div>
+                        <div class="calendar-cell" id="cell-2-3"></div>
+                        <div class="calendar-cell" id="cell-3-3"></div>
+                        <div class="calendar-cell" id="cell-4-3"></div>
+                        <div class="calendar-cell" id="cell-5-3"></div>
+                        
+                        <!-- Sesi 4: 15:50-17:30 -->
+                        <div class="time-cell">Sesi 4<br>15:50-17:30</div>
+                        <div class="calendar-cell" id="cell-1-4"></div>
+                        <div class="calendar-cell" id="cell-2-4"></div>
+                        <div class="calendar-cell" id="cell-3-4"></div>
+                        <div class="calendar-cell" id="cell-4-4"></div>
+                        <div class="calendar-cell" id="cell-5-4"></div>
+                    </div>
+                </div>
+                
+                <div class="legend mt-3">
+                    <div class="legend-item">
+                        <div class="legend-color status-available"></div>
+                        <div class="legend-text">Tersedia</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color status-teaching"></div>
+                        <div class="legend-text">Jadwal Mengajar</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color status-defense"></div>
+                        <div class="legend-text">Jadwal Sidang TA</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script>
-        // Daftar kode dosen dan nama lengkap (hardcoded)
-        const daftarDosen = {
-            'DNA': 'Dwi Nur Amalia, S.Kom., M.Kom',
-            'YTW': 'Yuyun Tri Wiranti, S.Kom., M.MT',
-            'PDA': 'Ir. I Putu Deny Arthawan Sugih Prabowo, M.Eng',
-            'VKA': 'Vika Fitratunnany Insanittaqwa, S.Kom., M.Kom',
-            'HLH': 'Henokh Lugo Hariyanto, S.Si., M.Sc.',
-            'MIA': 'M. Ihsan Alfani Putera, S.T.,Kom, M.Kom',
-            'DAP': 'Dwi Arief Prambudi, S.Kom., M.Kom.',
-            'NNA': 'Nursanti Novi Arisa, S.Pd., M.Kom.',
-            'ADL': 'Aidi Saputra Kirsan, S.ST., M.T.,Kom.',
-            'HIS': 'Hendy Indrawan Sunardi, S.Kom, M.Eng.',
-            'AWS': 'Arif Wicaksono, M.Kom',
-            'SRN': 'Sri Rahayu Natasia, S.Komp., M.Si., M.Sc.'
-        };
-        
-        // Jadwal jam berdasarkan sesi
-        const jadwalJam = {
-            1: '07:30-09:10',
-            2: '09:20-11:00',
-            3: '13:50-15:30',
-            4: '15:50-17:30'
-        };
-        
-        // Fungsi untuk membuat template Excel
-        function createTemplate() {
-            // Buat workbook baru
-            const wb = XLSX.utils.book_new();
-            
-            // Template jadwal mengajar
-            const jadwalData = [
-                ['Hari', 'Sesi', 'Jam', 'Ruangan', 'Mata Kuliah', 'Kode Dosen'],
-                ['Senin', 1, '07:30-09:10', 'A308', 'Statistika', 'SRN'],
-                ['Senin', 1, '07:30-09:10', 'E101', 'Manajemen dan Organisasi B', 'YTW'],
-                ['Senin', 1, '07:30-09:10', 'E102', 'Rekayasa Perangkat Lunak B', 'SRN'],
-                ['Senin', 2, '10:20-12:00', 'A308', 'Desain Interaksi Antarmuka dan Pengalaman Pengguna B', 'MIA'],
-                ['Senin', 2, '10:20-12:00', 'E101', 'Perencanaan Manajemen Proyek Teknologi Informasi A', 'YTW']
-            ];
-            const jadwalSheet = XLSX.utils.aoa_to_sheet(jadwalData);
-            XLSX.utils.book_append_sheet(wb, jadwalSheet, 'JadwalMengajar');
-            
-            // Template tim sidang
-            const timData = [
-                ['Nama Mahasiswa / NIM', 'Pembimbing 1', 'Pembimbing 2', 'Penguji 1', 'Penguji 2'],
-                ['Athifah Shyla Maritza / 10211021', 'Dwi Nur Amalia, S.Kom., M.Kom', 'Yuyun Tri Wiranti, S.Kom., M.MT', 'Ir. I Putu Deny Arthawan Sugih Prabowo, M.Eng', 'Vika Fitratunnany Insanittaqwa, S.Kom., M.Kom'],
-                ['Muhammad Rizky Afriza / 10211022', 'Yuyun Tri Wiranti, S.Kom., M.MT', 'Henokh Lugo Hariyanto, S.Si., M.Sc.', 'M. Ihsan Alfani Putera, S.T.,Kom, M.Kom', 'Dwi Arief Prambudi, S.Kom., M.Kom.']
-            ];
-            const timSheet = XLSX.utils.aoa_to_sheet(timData);
-            XLSX.utils.book_append_sheet(wb, timSheet, 'TimSidang');
-            
-            // Download file
-            XLSX.writeFile(wb, 'template_sidang_ta.xlsx');
-        }
-        
-        // Algoritma penjadwalan
-        function scheduleTA(jadwalMengajar, timSidang) {
-            const hasilJadwal = [];
-            const hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-            const sesiList = [1, 2, 3, 4];
-            
-            // Jadwal yang sudah digunakan oleh dosen
-            const jadwalDosenTerpakai = {};
-            
-            // Buat pemetaan nama lengkap dosen ke jadwal mengajar mereka
-            const dosenToJadwal = {};
-            
-            jadwalMengajar.forEach(jadwal => {
-                const kodeDosen = jadwal['Kode Dosen'];
-                const namaLengkap = daftarDosen[kodeDosen];
-                
-                if (!dosenToJadwal[namaLengkap]) {
-                    dosenToJadwal[namaLengkap] = [];
-                }
-                
-                dosenToJadwal[namaLengkap].push({
-                    hari: jadwal['Hari'],
-                    sesi: jadwal['Sesi']
-                });
-            });
-            
-            // Untuk setiap tim sidang
-            timSidang.forEach((tim, idx) => {
-                const namaMahasiswa = tim['Nama Mahasiswa / NIM'];
-                const pembimbing1 = tim['Pembimbing 1'];
-                const pembimbing2 = tim['Pembimbing 2'];
-                const penguji1 = tim['Penguji 1'];
-                const penguji2 = tim['Penguji 2'];
-                
-                const dosenTim = [pembimbing1, pembimbing2, penguji1, penguji2];
-                
-                // Cari slot waktu yang tersedia
-                const slotTersedia = [];
-                
-                hariList.forEach(hari => {
-                    sesiList.forEach(sesi => {
-                        // Cek apakah ada dosen yang mengajar pada slot ini
-                        let adaYangMengajar = false;
-                        
-                        for (const dosen of dosenTim) {
-                            if (dosenToJadwal[dosen]) {
-                                const jadwalDosen = dosenToJadwal[dosen].filter(j => 
-                                    j.hari === hari && j.sesi === sesi
-                                );
-                                
-                                if (jadwalDosen.length > 0) {
-                                    adaYangMengajar = true;
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        // Cek apakah ada dosen yang sudah terjadwal sidang pada slot ini
-                        let adaYangSidang = false;
-                        for (const dosen of dosenTim) {
-                            if (jadwalDosenTerpakai[dosen]) {
-                                for (const jadwal of jadwalDosenTerpakai[dosen]) {
-                                    if (jadwal[0] === hari && jadwal[1] === sesi) {
-                                        adaYangSidang = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (adaYangSidang) break;
-                        }
-                        
-                        if (!adaYangMengajar && !adaYangSidang) {
-                            slotTersedia.push([hari, sesi]);
-                        }
-                    });
-                });
-                
-                // Pilih slot pertama yang tersedia
-                if (slotTersedia.length > 0) {
-                    const slotTerpilih = slotTersedia[0];
-                    
-                    // Update jadwal dosen terpakai
-                    dosenTim.forEach(dosen => {
-                        if (!jadwalDosenTerpakai[dosen]) {
-                            jadwalDosenTerpakai[dosen] = [];
-                        }
-                        jadwalDosenTerpakai[dosen].push(slotTerpilih);
-                    });
-                    
-                    hasilJadwal.push({
-                        'Nama Mahasiswa': namaMahasiswa,
-                        'Pembimbing 1': pembimbing1,
-                        'Pembimbing 2': pembimbing2,
-                        'Penguji 1': penguji1,
-                        'Penguji 2': penguji2,
-                        'Hari': slotTerpilih[0],
-                        'Sesi': slotTerpilih[1],
-                        'Jam': jadwalJam[slotTerpilih[1]]
-                    });
-                } else {
-                    hasilJadwal.push({
-                        'Nama Mahasiswa': namaMahasiswa,
-                        'Pembimbing 1': pembimbing1,
-                        'Pembimbing 2': pembimbing2,
-                        'Penguji 1': penguji1,
-                        'Penguji 2': penguji2,
-                        'Hari': 'Tidak ada slot tersedia',
-                        'Sesi': '-',
-                        'Jam': '-'
-                    });
-                }
-            });
-            
-            return hasilJadwal;
-        }
-        
-        // Parsing data Excel
-        function processExcelFile(file) {
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                
-                // Baca jadwal mengajar
-                const jadwalSheet = workbook.Sheets['JadwalMengajar'];
-                const jadwalData = XLSX.utils.sheet_to_json(jadwalSheet, { header: 1 });
-                
-                // Konversi data ke format yang dibutuhkan
-                const headers = jadwalData[0];
-                const jadwalFormatted = [];
-                
-                for (let i = 1; i < jadwalData.length; i++) {
-                    const row = jadwalData[i];
-                    if (row.length > 0) {
-                        const item = {};
-                        for (let j = 0; j < headers.length; j++) {
-                            item[headers[j]] = row[j];
-                        }
-                        jadwalFormatted.push(item);
-                    }
-                }
-                
-                // Baca tim sidang
-                const timSheet = workbook.Sheets['TimSidang'];
-                const timData = XLSX.utils.sheet_to_json(timSheet, { header: 1 });
-                
-                // Konversi data ke format yang dibutuhkan
-                const timHeaders = timData[0];
-                const timFormatted = [];
-                
-                for (let i = 1; i < timData.length; i++) {
-                    const row = timData[i];
-                    if (row.length > 0) {
-                        const item = {};
-                        for (let j = 0; j < timHeaders.length; j++) {
-                            item[timHeaders[j]] = row[j];
-                        }
-                        timFormatted.push(item);
-                    }
-                }
-                
-                // Lakukan penjadwalan
-                const hasilJadwal = scheduleTA(jadwalFormatted, timFormatted);
-                
-                // Tampilkan hasil
-                displayResults(hasilJadwal);
-            };
-            
-            reader.readAsArrayBuffer(file);
-        }
-        
-        // Menampilkan hasil
-        function displayResults(results) {
-            const resultSection = document.getElementById('result-section');
-            const tableBody = document.querySelector('#result-table tbody');
-            
-            // Kosongkan tabel
-            tableBody.innerHTML = '';
-            
-            // Isi tabel dengan hasil
-            results.forEach(result => {
-                const row = document.createElement('tr');
-                const mahasiswa = result['Nama Mahasiswa'].split(' / ')[0]; // Ambil nama mahasiswa saja tanpa NIM
-                
-                row.innerHTML = `
-                    <td>${mahasiswa}</td>
-                    <td>${result['Pembimbing 1']}</td>
-                    <td>${result['Pembimbing 2']}</td>
-                    <td>${result['Penguji 1']}</td>
-                    <td>${result['Penguji 2']}</td>
-                    <td>${result.Hari}</td>
-                    <td>${result.Sesi}</td>
-                    <td>${result.Jam}</td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-            
-            // Tampilkan bagian hasil
-            resultSection.classList.remove('d-none');
-        }
-        
-        // Export hasil ke Excel
-        function exportResults() {
-            const table = document.getElementById('result-table');
-            const wb = XLSX.utils.table_to_book(table);
-            XLSX.writeFile(wb, 'hasil_sidang_ta.xlsx');
-        }
-        
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Download template
-            document.getElementById('download-template').addEventListener('click', createTemplate);
-            
-            // File upload
-            document.getElementById('file-input').addEventListener('change', function(e) {
-                if (e.target.files.length) {
-                    processExcelFile(e.target.files[0]);
-                }
-            });
-            
-            // Drag & drop
-            const dropArea = document.getElementById('drop-area');
-            
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropArea.addEventListener(eventName, preventDefaults, false);
-            });
-            
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropArea.addEventListener(eventName, highlight, false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropArea.addEventListener(eventName, unhighlight, false);
-            });
-            
-            function highlight() {
-                dropArea.classList.add('highlight');
-            }
-            
-            function unhighlight() {
-                dropArea.classList.remove('highlight');
-            }
-            
-            dropArea.addEventListener('drop', function(e) {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                
-                if (files.length && files[0].name.endsWith('.xlsx')) {
-                    processExcelFile(files[0]);
-                }
-            });
-            
-            // Export hasil
-            document.getElementById('export-result').addEventListener('click', exportResults);
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

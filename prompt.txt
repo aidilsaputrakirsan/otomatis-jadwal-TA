@@ -1,0 +1,13 @@
+Tolong analisis gambar tangkapan layar yang saya berikan dan ekstrak datanya ke dalam format yang bisa langsung di-copy paste ke Excel. Gunakan tab sebagai pemisah antar kolom agar saat di-paste ke Excel, data otomatis terbagi ke dalam kolom yang benar. 
+
+Jika gambar berisi jadwal mengajar, harap formatkan sebagai berikut:
+- Header: Hari [tab] Sesi [tab] Jam [tab] Ruangan [tab] Mata Kuliah [tab] Kode Dosen
+- Data: Fokus ekstraksi hanya pada mata kuliah yang memiliki kode dosen (3 huruf)
+- Pastikan format waktu dan informasi lainnya tetap konsisten
+
+Jika gambar berisi data tim sidang TA, harap formatkan sebagai berikut:
+- Header: Nama Mahasiswa / NIM [tab] Pembimbing 1 [tab] Pembimbing 2 [tab] Penguji 1 [tab] Penguji 2
+- Gunakan nama lengkap dosen (termasuk gelar) bukan kode 3 huruf
+- Tambahkan NIM dummy jika tidak ada informasi NIM (contoh: "Nama Mahasiswa / 10211xxx")
+
+Sediakan data dalam format teks polos yang bisa langsung di-copy paste, jangan gunakan tabel markdown atau format lainnya yang bisa merusak struktur tab saat di-copy paste ke Excel.

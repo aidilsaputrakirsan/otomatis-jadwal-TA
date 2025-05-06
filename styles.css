@@ -1,0 +1,149 @@
+/* Style untuk drop area */
+.drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin: 20px 0;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.drop-area.highlight {
+    border-color: #007bff;
+    background-color: #e8f4ff;
+}
+
+/* Style untuk tab content */
+.tab-content {
+    padding: 20px;
+    border: 1px solid #dee2e6;
+    border-top: 0;
+    border-radius: 0 0 0.25rem 0.25rem;
+}
+
+/* Style untuk tabel */
+.table {
+    background-color: #fff;
+}
+
+.table th {
+    background-color: #f8f9fa;
+}
+
+/* Style untuk kalender */
+.calendar-container {
+    display: grid;
+    margin-top: 20px;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: 120px repeat(5, 1fr);
+    text-align: center;
+    font-weight: bold;
+    background-color: #f8f9fa;
+}
+
+.day-header {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+}
+
+.empty-cell {
+    border: 1px solid #dee2e6;
+}
+
+.calendar-body {
+    display: grid;
+    grid-template-columns: 120px repeat(5, 1fr);
+    grid-template-rows: repeat(4, 100px);
+}
+
+.time-cell {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.calendar-cell {
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    overflow: auto;
+    font-size: 0.8em;
+    position: relative;
+}
+
+/* Status warna untuk kalender */
+.status-available {
+    background-color: #d4edda;
+}
+
+.status-teaching {
+    background-color: #fff3cd;
+}
+
+.status-defense {
+    background-color: #f8d7da;
+}
+
+/* Legend untuk kalender */
+.legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border: 1px solid #dee2e6;
+}
+
+/* Style untuk pilihan filter */
+.filter-controls {
+    margin-bottom: 20px;
+}
+
+/* Modal overlay untuk detil jadwal */
+.calendar-event {
+    cursor: pointer;
+    padding: 2px 5px;
+    margin-bottom: 3px;
+    border-radius: 3px;
+    color: #333;
+}
+
+.calendar-event.event-teaching {
+    background-color: #fff3cd;
+}
+
+.calendar-event.event-defense {
+    background-color: #f8d7da;
+}
+
+/* Responsif untuk layar kecil */
+@media (max-width: 768px) {
+    .calendar-body, .calendar-header {
+        grid-template-columns: 80px repeat(5, 1fr);
+    }
+    
+    .time-cell {
+        font-size: 0.7em;
+    }
+    
+    .calendar-cell {
+        font-size: 0.7em;
+        padding: 5px;
+    }
+}
