@@ -451,7 +451,7 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
         if (slotTersedia.length > 0) {
             // Hitung skor untuk setiap slot tersedia
             slotTersedia.forEach(slot => {
-                slot.score = calculateSlotScore(slot, jadwalHariTanggal, jadwalDosenTerpakai);
+                slot.score = calculateSlotScore(slot, jadwalHariTanggal, jadwalDosenTerpakai, dosenTim);
             });
             
             // Urutkan berdasarkan skor tertinggi
@@ -700,7 +700,7 @@ function displayResults(results) {
 }
 
 // Fungsi untuk menghitung skor slot berdasarkan distribusi beban dosen
-function calculateSlotScore(slot, jadwalHariTanggal, jadwalDosenTerpakai) {
+function calculateSlotScore(slot, jadwalHariTanggal, jadwalDosenTerpakai, dosenTim) {
     const hariTanggalKey = slot.hariTanggalKey;
     const sesi = slot.sesi;
     const hari = jadwalHariTanggal[hariTanggalKey].hari;
@@ -738,7 +738,7 @@ function calculateSlotScore(slot, jadwalHariTanggal, jadwalDosenTerpakai) {
     // Slot dengan dosen yang memiliki beban lebih rendah mendapat skor lebih tinggi
     let totalBeban = 0;
     dosenTim.forEach(dosen => {
-        totalBeban += dosenLoad[dosen];
+        totalBeban += dosenLoad[dosen] || 0;
     });
     
     skor -= totalBeban; // Kurangi skor berbanding lurus dengan beban dosen
@@ -1082,7 +1082,7 @@ function exportAvailableSlots() {
         ['Hari', 'Tanggal', 'Sesi', 'Jam', 'Ketersediaan Dosen']
     ];
     
-    slotTersedia.forEach(slot => {
+        slotTersedia.forEach(slot => {
         slotData.push([
             slot.Hari,
             slot.Tanggal,
