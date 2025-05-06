@@ -55,6 +55,159 @@ let jadwalHariTanggal = {};
 let tanggalMulaiSidang = null;
 let jumlahMinggu = 0;
 
+// Tambahkan fungsi ini pada bagian awal kode (setelah deklarasi variabel)
+
+// Fungsi untuk mengisi dropdown dosen
+function populateDosenDropdowns() {
+    const filterLecturer = document.getElementById('filter-lecturer');
+    const calendarLecturer = document.getElementById('calendar-lecturer');
+    const jadwalMengajarDosen = document.getElementById('jadwal-mengajar-dosen');
+    
+    if (!filterLecturer || !calendarLecturer || !jadwalMengajarDosen) return;
+    
+    // Kosongkan opsi kecuali "Semua Dosen"
+    while (filterLecturer.options.length > 1) {
+        filterLecturer.remove(1);
+    }
+    
+    while (calendarLecturer.options.length > 1) {
+        calendarLecturer.remove(1);
+    }
+    
+    while (jadwalMengajarDosen.options.length > 0) {
+        jadwalMengajarDosen.remove(0);
+    }
+    
+    // Tambahkan opsi dosen
+    Object.keys(daftarDosen).forEach(kode => {
+        const nama = daftarDosen[kode];
+        
+        const option1 = document.createElement('option');
+        option1.value = nama;
+        option1.textContent = `${nama} (${kode})`;
+        filterLecturer.appendChild(option1);
+        
+        const option2 = document.createElement('option');
+        option2.value = nama;
+        option2.textContent = `${nama} (${kode})`;
+        calendarLecturer.appendChild(option2);
+        
+        const option3 = document.createElement('option');
+        option3.value = nama;
+        option3.textContent = `${nama} (${kode})`;
+        jadwalMengajarDosen.appendChild(option3);
+    });
+}
+
+// Ubah bagian event listener DOMContentLoaded di bagian bawah script
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Isi dropdown dosen saat halaman dimuat
+    populateDosenDropdowns();
+    
+    // Download template
+    const downloadTemplate = document.getElementById('download-template');
+    if (downloadTemplate) {
+        downloadTemplate.addEventListener('click', createTemplate);
+    }
+    
+    // File upload
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length) {
+                processExcelFile(e.target.files[0]);
+            }
+        });
+    }
+    
+    // Drag & drop
+    const dropArea = document.getElementById('drop-area');
+    if (dropArea) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.classList.add('highlight');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('highlight');
+        }
+        
+        dropArea.addEventListener('drop', function(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length && files[0].name.endsWith('.xlsx')) {
+                processExcelFile(files[0]);
+            }
+        });
+    }
+    
+    // Export hasil
+    const exportResult = document.getElementById('export-result');
+    if (exportResult) {
+        exportResult.addEventListener('click', exportResults);
+    }
+    
+    // Export slot tersedia
+    const exportAvailable = document.getElementById('export-available');
+    if (exportAvailable) {
+        exportAvailable.addEventListener('click', exportAvailableSlots);
+    }
+    
+    // Filter slot tersedia
+    const filterDay = document.getElementById('filter-day');
+    const filterSession = document.getElementById('filter-session');
+    const filterPekan = document.getElementById('filter-pekan');
+    
+    if (filterDay && filterSession && filterPekan) {
+        filterDay.addEventListener('change', filterAvailableSlots);
+        filterSession.addEventListener('change', filterAvailableSlots);
+        filterPekan.addEventListener('change', filterAvailableSlots);
+    }
+    
+    // Update kalender saat pilihan dosen atau pekan berubah
+    const calendarLecturer = document.getElementById('calendar-lecturer');
+    const calendarWeek = document.getElementById('calendar-week');
+    
+    if (calendarLecturer && calendarWeek) {
+        calendarLecturer.addEventListener('change', updateCalendar);
+        calendarWeek.addEventListener('change', updateCalendar);
+    }
+    
+    // Form jadwal mengajar
+    const addJadwalMengajar = document.getElementById('add-jadwal-mengajar');
+    if (addJadwalMengajar) {
+        addJadwalMengajar.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dosen = document.getElementById('jadwal-mengajar-dosen').value;
+            const hari = document.getElementById('jadwal-mengajar-hari').value;
+            const pekan = parseInt(document.getElementById('jadwal-mengajar-pekan').value);
+            const sesi = parseInt(document.getElementById('jadwal-mengajar-sesi').value);
+            
+            addDosenJadwalMengajar(dosen, hari, pekan, sesi);
+        });
+    }
+});
+
 // Helper function untuk mendapatkan nomor minggu dari tanggal
 function getWeekNumber(date) {
     const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
