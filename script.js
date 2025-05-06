@@ -46,13 +46,6 @@ const indexToHari = {
     5: 'Jumat'
 };
 
-// Dapatkan tanggal libur dari input
-const tanggalLiburInput = document.getElementById('tanggal-libur').value;
-const tanggalLibur = tanggalLiburInput ? tanggalLiburInput.split(',') : [];
-
-// Gunakan dalam fungsi inisialisasi tanggal
-jadwalHariTanggal = inisialisasiTanggal(tanggalMulai, mingguValid ? jumlahMingguInput : null, tanggalLibur);
-
 // Menyimpan jadwal
 let jadwalMengajar = [];
 let timSidang = [];
@@ -110,7 +103,7 @@ function formatDate(date) {
 }
 
 // Inisialisasi tanggal untuk penjadwalan
-function inisialisasiTanggal(tanggalMulai, jumlahMingguParam, tanggalibur = []) {
+function inisialisasiTanggal(tanggalMulai, jumlahMingguParam, tanggalLibur = []) {
     // Konversi string tanggal ke objek Date
     tanggalMulaiSidang = new Date(tanggalMulai);
     
@@ -118,6 +111,7 @@ function inisialisasiTanggal(tanggalMulai, jumlahMingguParam, tanggalibur = []) 
     jumlahMinggu = jumlahMingguParam || 6;
     
     console.log(`Inisialisasi jadwal untuk ${jumlahMinggu} minggu (${jumlahMinggu * 5} hari kerja)`);
+    console.log(`Tanggal libur: ${tanggalLibur.join(', ')}`);
     
     // Buat mapping hari ke tanggal untuk jumlahMinggu ke depan
     const jadwalHariTanggal = {};
@@ -154,10 +148,13 @@ function inisialisasiTanggal(tanggalMulai, jumlahMingguParam, tanggalibur = []) 
         
         // Format tanggal: DD/MM/YYYY
         const tanggalStr = formatDate(currentDate);
+        
+        // Lewati tanggal libur
         if (tanggalLibur.includes(tanggalStr)) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        continue;
-    }
+            console.log(`Melewati tanggal libur: ${tanggalStr}`);
+            currentDate.setDate(currentDate.getDate() + 1);
+            continue;
+        }
         
         // Buat key unik untuk setiap hari+tanggal
         const key = `${namaHari}-${tanggalStr}`;
@@ -723,8 +720,41 @@ function processExcelFile(file) {
         const jumlahMingguInput = parseInt(document.getElementById('jumlah-minggu').value);
         const mingguValid = !isNaN(jumlahMingguInput) && jumlahMingguInput > 0;
         
+        // Dapatkan tanggal libur dari input dan pastikan formatnya sesuai
+        const tanggalLiburInput = document.getElementById('tanggal-libur').value;
+        let tanggalLibur = [];
+        
+        if (tanggalLiburInput && tanggalLiburInput.trim() !== '') {
+            // Pisahkan input tanggal dan format ulang ke DD/MM/YYYY jika perlu
+            tanggalLibur = tanggalLiburInput.split(',').map(date => {
+                date = date.trim();
+                if (!date) return null; // Skip empty entries
+                
+                // Coba parse tanggal sesuai format input
+                let dateObj;
+                if (date.includes('/')) {
+                    // Jika sudah dalam format DD/MM/YYYY
+                    const [day, month, year] = date.split('/').map(Number);
+                    dateObj = new Date(year, month - 1, day);
+                } else {
+                    // Jika dalam format lain (misal dari input type="date"), konversi
+                    dateObj = new Date(date);
+                }
+                
+                // Format ulang ke DD/MM/YYYY
+                if (isNaN(dateObj.getTime())) {
+                    console.error(`Format tanggal tidak valid: ${date}`);
+                    return null;
+                }
+                
+                return formatDate(dateObj);
+            }).filter(date => date !== null); // Hapus entri null
+        }
+        
+        console.log("Tanggal libur:", tanggalLibur);
+        
         // Inisialisasi jadwal hari-tanggal
-        jadwalHariTanggal = inisialisasiTanggal(tanggalMulai, mingguValid ? jumlahMingguInput : null);
+        jadwalHariTanggal = inisialisasiTanggal(tanggalMulai, mingguValid ? jumlahMingguInput : null, tanggalLibur);
         
         // Lakukan penjadwalan
         console.time('Waktu Penjadwalan');
