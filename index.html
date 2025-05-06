@@ -4,85 +4,343 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Penjadwalan Sidang TA</title>
-    <link rel="stylesheet" href="style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        .drop-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            background-color: #f8f9fa;
+        }
+        .drop-area.highlight {
+            border-color: #007bff;
+            background-color: #e8f4ff;
+        }
+        .result-table {
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Sistem Penjadwalan Sidang TA</h1>
-        </header>
-
-        <div class="tabs">
-            <button class="tab-button active" data-tab="cari-jadwal">Cari Jadwal Kosong</button>
-            <button class="tab-button" data-tab="cek-dosen">Cek Jadwal Dosen</button>
-            <button class="tab-button" data-tab="jadwalkan">Jadwalkan Sidang</button>
-        </div>
-
-        <div class="tab-content">
-            <!-- Tab Cari Jadwal Kosong -->
-            <div id="cari-jadwal" class="tab-pane active">
-                <h2>Cari Jadwal Kosong Dosen</h2>
-                <div class="form-group">
-                    <label for="cariDosenInput">Nama Dosen:</label>
-                    <input type="text" id="cariDosenInput" placeholder="Masukkan nama lengkap dosen">
-                </div>
-                <button id="cariJadwalBtn" class="primary-btn">Cari Jadwal Kosong</button>
-                <div class="result" id="cariJadwalResult">
-                    <div class="result-content"></div>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Sistem Penjadwalan Sidang TA</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Template Excel</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Download template Excel untuk mengisi jadwal mengajar dan tim sidang TA:</p>
+                        <button id="download-template" class="btn btn-primary">Download Template</button>
+                    </div>
                 </div>
             </div>
-
-            <!-- Tab Cek Jadwal Dosen -->
-            <div id="cek-dosen" class="tab-pane">
-                <h2>Cek Jadwal Dosen</h2>
-                <div class="form-group">
-                    <label for="cekDosenInput">Nama Dosen:</label>
-                    <input type="text" id="cekDosenInput" placeholder="Masukkan nama lengkap dosen">
-                </div>
-                <button id="cekJadwalBtn" class="primary-btn">Cek Jadwal</button>
-                <div class="result" id="cekJadwalResult">
-                    <div class="result-content"></div>
-                </div>
-            </div>
-
-            <!-- Tab Jadwalkan Sidang -->
-            <div id="jadwalkan" class="tab-pane">
-                <h2>Jadwalkan Sidang TA</h2>
-                <div class="form-group">
-                    <label for="nomorSidangInput">Nomor Sidang:</label>
-                    <input type="number" id="nomorSidangInput" placeholder="Masukkan nomor sidang (1, 2, 3, ...)" min="1">
-                </div>
-                <button id="cekKetersediaanBtn" class="primary-btn">Cek Ketersediaan</button>
-                
-                <div id="detailSidang" class="hidden">
-                    <h3>Detail Sidang</h3>
-                    <div id="detailSidangContent"></div>
-                    
-                    <div class="form-group">
-                        <label for="slotSelect">Pilih Slot Waktu:</label>
-                        <select id="slotSelect"></select>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Upload Data</h5>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="ruanganInput">Ruangan:</label>
-                        <input type="text" id="ruanganInput" placeholder="Masukkan ruangan sidang">
+                    <div class="card-body">
+                        <p>Upload file Excel yang sudah diisi:</p>
+                        <div id="drop-area" class="drop-area">
+                            <p>Drag & drop file Excel di sini atau</p>
+                            <input type="file" id="file-input" accept=".xlsx" class="form-control">
+                        </div>
                     </div>
-                    
-                    <button id="jadwalkanBtn" class="primary-btn">Jadwalkan Sidang</button>
-                </div>
-                
-                <div class="result" id="jadwalkanResult">
-                    <div class="result-content"></div>
                 </div>
             </div>
         </div>
+        
+        <div id="result-section" class="mt-5 d-none">
+            <h2>Hasil Penjadwalan</h2>
+            <p>Jadwal sidang TA yang direkomendasikan:</p>
+            <div class="table-responsive">
+                <table id="result-table" class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Tim</th>
+                            <th>Pembimbing 1</th>
+                            <th>Pembimbing 2</th>
+                            <th>Penguji 1</th>
+                            <th>Penguji 2</th>
+                            <th>Hari</th>
+                            <th>Sesi</th>
+                            <th>Jam</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button id="export-result" class="btn btn-success mt-3">Export Hasil ke Excel</button>
+        </div>
     </div>
 
-    <!-- Loader -->
-    <div id="loader" class="hidden">
-        <div class="spinner"></div>
-    </div>
-
-    <script src="script.js"></script>
+    <script>
+        // Fungsi untuk membuat template Excel
+        function createTemplate() {
+            // Buat workbook baru
+            const wb = XLSX.utils.book_new();
+            
+            // Template jadwal mengajar
+            const jadwalData = [
+                ['Hari', 'Sesi', 'Jam', 'Ruangan', 'Mata Kuliah', 'Kode Dosen'],
+                ['Senin', 1, '07:30-08:20', 'A308', 'Statistika', 'DNA'],
+                ['Senin', 1, '07:30-08:20', 'E101', 'Manajemen dan Organisasi B', 'YTW'],
+                // Contoh data lainnya
+            ];
+            const jadwalSheet = XLSX.utils.aoa_to_sheet(jadwalData);
+            XLSX.utils.book_append_sheet(wb, jadwalSheet, 'JadwalMengajar');
+            
+            // Template tim sidang
+            const timData = [
+                ['Pembimbing 1', 'Pembimbing 2', 'Penguji 1', 'Penguji 2'],
+                ['DNA', 'YTW', 'PDA', 'VKA'],
+                ['YTW', 'HLH', 'MIA', 'DAP'],
+                // Contoh data lainnya
+            ];
+            const timSheet = XLSX.utils.aoa_to_sheet(timData);
+            XLSX.utils.book_append_sheet(wb, timSheet, 'TimSidang');
+            
+            // Daftar kode dosen
+            const dosenData = [
+                ['Kode', 'Nama Lengkap'],
+                ['DNA', 'Dwi Nur Amalia, S.Kom., M.Kom'],
+                ['YTW', 'Yuyun Tri Wiranti, S.Kom., M.MT'],
+                // Daftar kode lainnya
+            ];
+            const dosenSheet = XLSX.utils.aoa_to_sheet(dosenData);
+            XLSX.utils.book_append_sheet(wb, dosenSheet, 'KodeDosen');
+            
+            // Download file
+            XLSX.writeFile(wb, 'template_sidang_ta.xlsx');
+        }
+        
+        // Jadwal jam berdasarkan sesi
+        const jadwalJam = {
+            1: '07:30-09:10',
+            2: '09:20-11:00',
+            3: '13:50-15:30',
+            4: '15:50-17:30'
+        };
+        
+        // Algoritma penjadwalan
+        function scheduleTA(jadwalMengajar, timSidang) {
+            const hasilJadwal = [];
+            const hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+            const sesiList = [1, 2, 3, 4];
+            
+            // Jadwal yang sudah digunakan oleh dosen
+            const jadwalDosenTerpakai = {};
+            
+            // Untuk setiap tim sidang
+            timSidang.forEach((tim, idx) => {
+                const pembimbing1 = tim['Pembimbing 1'];
+                const pembimbing2 = tim['Pembimbing 2'];
+                const penguji1 = tim['Penguji 1'];
+                const penguji2 = tim['Penguji 2'];
+                
+                const dosenTim = [pembimbing1, pembimbing2, penguji1, penguji2];
+                
+                // Cari slot waktu yang tersedia
+                const slotTersedia = [];
+                
+                hariList.forEach(hari => {
+                    sesiList.forEach(sesi => {
+                        // Cek apakah ada dosen yang mengajar pada slot ini
+                        let adaYangMengajar = false;
+                        for (const dosen of dosenTim) {
+                            const jadwalDosen = jadwalMengajar.filter(j => 
+                                j['Kode Dosen'] === dosen && 
+                                j['Hari'] === hari && 
+                                j['Sesi'] === sesi
+                            );
+                            
+                            if (jadwalDosen.length > 0) {
+                                adaYangMengajar = true;
+                                break;
+                            }
+                        }
+                        
+                        // Cek apakah ada dosen yang sudah terjadwal sidang pada slot ini
+                        let adaYangSidang = false;
+                        for (const dosen of dosenTim) {
+                            if (jadwalDosenTerpakai[dosen]) {
+                                for (const jadwal of jadwalDosenTerpakai[dosen]) {
+                                    if (jadwal[0] === hari && jadwal[1] === sesi) {
+                                        adaYangSidang = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (adaYangSidang) break;
+                        }
+                        
+                        if (!adaYangMengajar && !adaYangSidang) {
+                            slotTersedia.push([hari, sesi]);
+                        }
+                    });
+                });
+                
+                // Pilih slot pertama yang tersedia
+                if (slotTersedia.length > 0) {
+                    const slotTerpilih = slotTersedia[0];
+                    
+                    // Update jadwal dosen terpakai
+                    dosenTim.forEach(dosen => {
+                        if (!jadwalDosenTerpakai[dosen]) {
+                            jadwalDosenTerpakai[dosen] = [];
+                        }
+                        jadwalDosenTerpakai[dosen].push(slotTerpilih);
+                    });
+                    
+                    hasilJadwal.push({
+                        'Tim': idx + 1,
+                        'Pembimbing 1': pembimbing1,
+                        'Pembimbing 2': pembimbing2,
+                        'Penguji 1': penguji1,
+                        'Penguji 2': penguji2,
+                        'Hari': slotTerpilih[0],
+                        'Sesi': slotTerpilih[1],
+                        'Jam': jadwalJam[slotTerpilih[1]]
+                    });
+                } else {
+                    hasilJadwal.push({
+                        'Tim': idx + 1,
+                        'Pembimbing 1': pembimbing1,
+                        'Pembimbing 2': pembimbing2,
+                        'Penguji 1': penguji1,
+                        'Penguji 2': penguji2,
+                        'Hari': 'Tidak ada slot tersedia',
+                        'Sesi': '-',
+                        'Jam': '-'
+                    });
+                }
+            });
+            
+            return hasilJadwal;
+        }
+        
+        // Parsing data Excel
+        function processExcelFile(file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Baca jadwal mengajar
+                const jadwalSheet = workbook.Sheets['JadwalMengajar'];
+                const jadwalData = XLSX.utils.sheet_to_json(jadwalSheet);
+                
+                // Baca tim sidang
+                const timSheet = workbook.Sheets['TimSidang'];
+                const timData = XLSX.utils.sheet_to_json(timSheet);
+                
+                // Lakukan penjadwalan
+                const hasilJadwal = scheduleTA(jadwalData, timData);
+                
+                // Tampilkan hasil
+                displayResults(hasilJadwal);
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // Menampilkan hasil
+        function displayResults(results) {
+            const resultSection = document.getElementById('result-section');
+            const tableBody = document.querySelector('#result-table tbody');
+            
+            // Kosongkan tabel
+            tableBody.innerHTML = '';
+            
+            // Isi tabel dengan hasil
+            results.forEach(result => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${result.Tim}</td>
+                    <td>${result['Pembimbing 1']}</td>
+                    <td>${result['Pembimbing 2']}</td>
+                    <td>${result['Penguji 1']}</td>
+                    <td>${result['Penguji 2']}</td>
+                    <td>${result.Hari}</td>
+                    <td>${result.Sesi}</td>
+                    <td>${result.Jam}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Tampilkan bagian hasil
+            resultSection.classList.remove('d-none');
+        }
+        
+        // Export hasil ke Excel
+        function exportResults() {
+            const table = document.getElementById('result-table');
+            const wb = XLSX.utils.table_to_book(table);
+            XLSX.writeFile(wb, 'hasil_sidang_ta.xlsx');
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Download template
+            document.getElementById('download-template').addEventListener('click', createTemplate);
+            
+            // File upload
+            document.getElementById('file-input').addEventListener('change', function(e) {
+                if (e.target.files.length) {
+                    processExcelFile(e.target.files[0]);
+                }
+            });
+            
+            // Drag & drop
+            const dropArea = document.getElementById('drop-area');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropArea.classList.add('highlight');
+            }
+            
+            function unhighlight() {
+                dropArea.classList.remove('highlight');
+            }
+            
+            dropArea.addEventListener('drop', function(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length && files[0].name.endsWith('.xlsx')) {
+                    processExcelFile(files[0]);
+                }
+            });
+            
+            // Export hasil
+            document.getElementById('export-result').addEventListener('click', exportResults);
+        });
+    </script>
 </body>
 </html>
