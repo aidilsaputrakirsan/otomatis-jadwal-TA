@@ -64,8 +64,19 @@ function getWeekNumber(date) {
 
 // Helper function untuk mendapatkan tanggal dari string (DD/MM/YYYY)
 function parseDate(dateStr) {
-    const [day, month, year] = dateStr.split('/').map(Number);
-    return new Date(year, month - 1, day);
+    // Periksa apakah dateStr adalah string
+    if (typeof dateStr !== 'string') {
+        console.error('dateStr bukan string:', dateStr);
+        return new Date(); // Kembalikan tanggal saat ini sebagai fallback
+    }
+    
+    try {
+        const [day, month, year] = dateStr.split('/').map(Number);
+        return new Date(year, month - 1, day);
+    } catch (error) {
+        console.error('Error saat parsing tanggal:', error);
+        return new Date(); // Kembalikan tanggal saat ini sebagai fallback
+    }
 }
 
 // Helper function untuk format tanggal ke string (DD/MM/YYYY)
@@ -542,6 +553,10 @@ function processExcelFile(file) {
             alert('Silakan masukkan tanggal mulai sidang terlebih dahulu!');
             return;
         }
+
+        // Konversi format input date (YYYY-MM-DD) ke format DD/MM/YYYY
+        const dateObj = new Date(tanggalMulai);
+        const formattedDate = formatDate(dateObj);
         
         // Inisialisasi jadwal hari-tanggal
         jadwalHariTanggal = inisialisasiTanggal(tanggalMulai, timSidang.length);
