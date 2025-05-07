@@ -177,7 +177,16 @@
                                     <li>Upload file Excel yang sudah diisi</li>
                                     <li>Lihat hasil penjadwalan di tab "Hasil Penjadwalan"</li>
                                 </ol>
-                                <p><strong>Catatan:</strong> Request jadwal dari Excel akan diprioritaskan secara mutlak, bahkan jika bentrok dengan jadwal mengajar dosen.</p>
+                                <h5>Algoritma dan Persyaratan Prioritas</h5>
+                                <p>Sistem menggunakan algoritma penjadwalan berbasis dosen dengan prioritas sebagai berikut:</p>
+                                <ol>
+                                    <li><strong>Request Jadwal = Mutlak</strong>: Request jadwal dari Excel diutamakan, bahkan jika bentrok dengan jadwal mengajar dan ketidaktersediaan dosen.</li>
+                                    <li><strong>Konflik Dosen = Dilarang</strong>: Dosen tidak boleh terjadwal di dua sidang bersamaan.</li>
+                                    <li><strong>Ketidaktersediaan Dosen = Dipatuhi</strong>: Dosen tidak akan dijadwalkan pada slot di mana mereka menyatakan tidak tersedia.</li>
+                                    <li><strong>Sidang Paralel = Diperbolehkan</strong>: Boleh ada beberapa sidang pada slot yang sama jika dosennya berbeda.</li>
+                                    <li><strong>Jadwal Mengajar < Request Sidang</strong>: Jadwal mengajar bisa "digantikan" oleh request sidang.</li>
+                                    <li><strong>Maksimalkan Penjadwalan</strong>: Usahakan semua mahasiswa mendapat jadwal sidang.</li>
+                                </ol>
                             </div>
                         </div>
                     </div>
