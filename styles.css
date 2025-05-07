@@ -95,6 +95,17 @@
 .status-request {
     background-color: #e0f7fa;
 }
+.status-unavailable {
+    background-color: #f8d7da;
+}
+
+.event-unavailable {
+    background-color: #dc3545;
+    color: white;
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin: 2px 0;
+}
 /* Legend untuk kalender */
 .legend {
     display: flex;

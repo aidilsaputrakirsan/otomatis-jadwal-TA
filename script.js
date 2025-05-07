@@ -54,6 +54,7 @@ let slotTersedia = [];
 let jadwalHariTanggal = {};
 let tanggalMulaiSidang = null;
 let jumlahMinggu = 0;
+let ketidaktersediaanDosen = {};
 
 // Helper function untuk mendapatkan nomor minggu dari tanggal
 function getWeekNumber(date) {
@@ -95,6 +96,138 @@ function parseDate(dateStr) {
     // Fallback: kembalikan tanggal saat ini
     console.error('dateStr bukan format yang didukung:', dateStr);
     return new Date();
+}
+
+// Fungsi untuk mengisi dropdown dosen ketersediaan
+function populateDosenKetersediaanDropdown() {
+    const dosenSelect = document.getElementById('dosen-select');
+    if (!dosenSelect) return;
+    
+    // Kosongkan opsi
+    dosenSelect.innerHTML = '';
+    
+    // Tambahkan opsi dosen
+    Object.keys(daftarDosen).forEach(kode => {
+        const nama = daftarDosen[kode];
+        
+        const option = document.createElement('option');
+        option.value = kode;
+        option.textContent = `${nama} (${kode})`;
+        dosenSelect.appendChild(option);
+    });
+}
+
+// Fungsi untuk menambahkan ketidaktersediaan dosen
+function tambahKetidaktersediaan() {
+    const dosenSelect = document.getElementById('dosen-select');
+    const hariSelect = document.getElementById('hari-select');
+    const sesiSelect = document.getElementById('sesi-select');
+    
+    const kodeDosen = dosenSelect.value;
+    const hari = hariSelect.value;
+    const sesi = parseInt(sesiSelect.value);
+    
+    // Dapatkan pekan yang dipilih
+    const pekanDipilih = [];
+    for (let i = 1; i <= 6; i++) {
+        const checkbox = document.getElementById(`pekan-${i}`);
+        if (checkbox && checkbox.checked) {
+            pekanDipilih.push(i);
+        }
+    }
+    
+    // Validasi
+    if (pekanDipilih.length === 0) {
+        alert('Pilih minimal satu pekan!');
+        return;
+    }
+    
+    // Inisialisasi array untuk dosen jika belum ada
+    if (!ketidaktersediaanDosen[kodeDosen]) {
+        ketidaktersediaanDosen[kodeDosen] = [];
+    }
+    
+    // Tambahkan ketidaktersediaan
+    ketidaktersediaanDosen[kodeDosen].push({
+        hari: hari,
+        sesi: sesi,
+        pekan: pekanDipilih
+    });
+    
+    // Update tampilan tabel
+    updateTabelKetidaktersediaan();
+    
+    // Reset checkboxes
+    for (let i = 1; i <= 6; i++) {
+        const checkbox = document.getElementById(`pekan-${i}`);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+    }
+    
+    console.log('Ketidaktersediaan dosen diperbarui:', ketidaktersediaanDosen);
+}
+
+// Fungsi untuk menampilkan tabel ketidaktersediaan
+function updateTabelKetidaktersediaan() {
+    const tableBody = document.querySelector('#tabel-ketidaktersediaan tbody');
+    if (!tableBody) return;
+    
+    // Kosongkan tabel
+    tableBody.innerHTML = '';
+    
+    // Isi tabel dengan data ketidaktersediaan
+    Object.keys(ketidaktersediaanDosen).forEach(kodeDosen => {
+        ketidaktersediaanDosen[kodeDosen].forEach((item, index) => {
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+                <td>${daftarDosen[kodeDosen]} (${kodeDosen})</td>
+                <td>${item.hari}</td>
+                <td>Sesi ${item.sesi} (${jadwalJam[item.sesi]})</td>
+                <td>${item.pekan.map(p => `Pekan ${p}`).join(', ')}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="hapusKetidaktersediaan('${kodeDosen}', ${index})">Hapus</button>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+    });
+}
+
+// Fungsi untuk menghapus ketidaktersediaan
+function hapusKetidaktersediaan(kodeDosen, index) {
+    if (ketidaktersediaanDosen[kodeDosen]) {
+        ketidaktersediaanDosen[kodeDosen].splice(index, 1);
+        
+        // Jika tidak ada lagi item, hapus entri dosen
+        if (ketidaktersediaanDosen[kodeDosen].length === 0) {
+            delete ketidaktersediaanDosen[kodeDosen];
+        }
+        
+        // Update tampilan
+        updateTabelKetidaktersediaan();
+        console.log('Ketidaktersediaan dosen diperbarui:', ketidaktersediaanDosen);
+    }
+}
+
+// Fungsi untuk memeriksa apakah dosen tersedia pada slot tertentu
+function isDosenTersedia(kodeDosen, hari, sesi, pekan) {
+    // Jika tidak ada entri ketidaktersediaan untuk dosen ini, dia tersedia
+    if (!ketidaktersediaanDosen[kodeDosen]) {
+        return true;
+    }
+    
+    // Pastikan pekan adalah angka
+    const pekanNum = parseInt(pekan);
+    
+    // Cek apakah ada ketidaktersediaan yang cocok
+    return !ketidaktersediaanDosen[kodeDosen].some(item => 
+        item.hari === hari && 
+        item.sesi === sesi && 
+        item.pekan.includes(pekanNum)
+    );
 }
 
 // Helper function untuk format tanggal ke string (DD/MM/YYYY)
@@ -468,12 +601,22 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
                     // Cek apakah ada dosen tim yang sudah terpakai pada slot ini
                     let dosenBentrok = [];
                     for (const dosen of dosenTim) {
+                        // Cek jadwal sidang bentrok
                         if (dosenSidangTerpakai[dosen] && dosenSidangTerpakai[dosen][slotKey]) {
+                            dosenBentrok.push(dosen);
+                            continue;
+                        }
+                        
+                        // Cek ketidaktersediaan dosen
+                        const kodeDosen = kodeToDosen[dosen];
+                        const pekan = jadwalHariTanggal[key].pekan;
+                        const hari = jadwalHariTanggal[key].hari;
+                        if (kodeDosen && !isDosenTersedia(kodeDosen, hari, s, pekan)) {
                             dosenBentrok.push(dosen);
                         }
                     }
                     
-                    // Jika tidak ada bentrok dengan jadwal sidang dosen, gunakan slot ini
+                    // Jika tidak ada bentrok, gunakan slot ini
                     if (dosenBentrok.length === 0 && jadwalHariTanggal[key].slots[s].tersedia) {
                         // Tandai dosen sebagai terpakai pada slot ini
                         for (const dosen of dosenTim) {
@@ -511,7 +654,17 @@ function scheduleTA(jadwalMengajar, timSidang, jadwalHariTanggal) {
                         // Cek apakah ada dosen tim yang sudah terpakai pada slot ini
                         let dosenBentrok = [];
                         for (const dosen of dosenTim) {
+                            // Cek jadwal sidang bentrok
                             if (dosenSidangTerpakai[dosen] && dosenSidangTerpakai[dosen][slotKey]) {
+                                dosenBentrok.push(dosen);
+                                continue;
+                            }
+                            
+                            // Cek ketidaktersediaan dosen
+                            const kodeDosen = kodeToDosen[dosen];
+                            const pekan = jadwalHariTanggal[key].pekan;
+                            const hari = jadwalHariTanggal[key].hari;
+                            if (kodeDosen && !isDosenTersedia(kodeDosen, hari, s, pekan)) {
                                 dosenBentrok.push(dosen);
                             }
                         }
@@ -625,13 +778,33 @@ function generateAvailableSlots(jadwalMengajar, hasilJadwal, jadwalHariTanggal) 
             const key = `${hariTanggal.hari}-${hariTanggal.tanggal}-${sesi}`;
             const dosenTerpakai = dosenPerSlot[key] || new Set();
             
-            // Cari dosen yang tersedia (tidak terpakai di slot ini)
+            // Cari dosen yang tersedia (tidak terpakai di slot ini & tidak ditandai tidak tersedia)
             const dosenTersedia = [];
             Object.keys(daftarDosen).forEach(kode => {
                 const namaLengkap = daftarDosen[kode];
-                if (!dosenTerpakai.has(namaLengkap)) {
-                    dosenTersedia.push(kode);
+                
+                // Jika dosen sudah dijadwalkan pada slot ini, skip
+                if (dosenTerpakai.has(namaLengkap)) {
+                    return;
                 }
+                
+                // TAMBAHAN: Cek ketidaktersediaan dosen
+                if (ketidaktersediaanDosen[kode]) {
+                    // Periksa apakah dosen tidak tersedia pada slot ini
+                    const pekanNum = parseInt(hariTanggal.pekan);
+                    const tidakTersedia = ketidaktersediaanDosen[kode].some(item => 
+                        item.hari === hariTanggal.hari && 
+                        item.sesi === sesi && 
+                        item.pekan.includes(pekanNum)
+                    );
+                    
+                    if (tidakTersedia) {
+                        return; // Dosen tidak tersedia, skip
+                    }
+                }
+                
+                // Jika sampai di sini, dosen tersedia
+                dosenTersedia.push(kode);
             });
             
             // Hanya tambahkan slot jika ada dosen yang tersedia
@@ -920,7 +1093,7 @@ function populateWeekDropdown() {
     }
 }
 
-// Update tampilan kalender
+// Fungsi update kalender (lengkap)
 function updateCalendar() {
     // Reset tampilan kalender
     const calendarContainer = document.querySelector('.calendar-container');
@@ -1021,6 +1194,27 @@ function updateCalendar() {
                 cell.dataset.tanggal = day.data.tanggal;
                 cell.dataset.pekan = day.data.pekan;
                 cell.dataset.sesi = sesi;
+                
+                // Cek ketidaktersediaan dosen
+                const kodeDosen = kodeToDosen[dosenValue];
+                if (kodeDosen && ketidaktersediaanDosen[kodeDosen]) {
+                    const pekanNum = parseInt(day.data.pekan);
+                    const item = ketidaktersediaanDosen[kodeDosen].find(item => 
+                        item.hari === day.data.hari && 
+                        item.sesi === sesi && 
+                        item.pekan.includes(pekanNum)
+                    );
+                    
+                    if (item) {
+                        cell.classList.remove('status-available');
+                        cell.classList.add('status-unavailable');
+                        
+                        const eventDiv = document.createElement('div');
+                        eventDiv.className = 'calendar-event event-unavailable';
+                        eventDiv.textContent = 'Dosen Tidak Tersedia';
+                        cell.appendChild(eventDiv);
+                    }
+                }
                 
                 // Cek jadwal mengajar pada slot ini
                 if (day.data.slots[sesi].jadwalMengajar.length > 0) {
@@ -1249,6 +1443,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Tambahkan event listener untuk ketidaktersediaan dosen
+    const tambahKetidaktersediaanBtn = document.getElementById('tambah-ketidaktersediaan');
+    if (tambahKetidaktersediaanBtn) {
+        tambahKetidaktersediaanBtn.addEventListener('click', tambahKetidaktersediaan);
+    }
+
+    populateDosenKetersediaanDropdown();
     
     // Export hasil
     const exportResult = document.getElementById('export-result');

@@ -60,6 +60,92 @@
                             <input type="text" id="tanggal-libur" class="form-control" placeholder="Contoh: 17/05/2025, 25/05/2025">
                             <small class="form-text text-muted">Masukkan tanggal libur dengan format DD/MM/YYYY, pisahkan dengan koma.</small>
                         </div>
+
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5>Pengaturan Ketersediaan Dosen</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="dosen-select" class="form-label">Pilih Dosen:</label>
+                                        <select id="dosen-select" class="form-select">
+                                            <!-- Opsi dosen akan diisi oleh JavaScript -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="hari-select" class="form-label">Pilih Hari:</label>
+                                        <select id="hari-select" class="form-select">
+                                            <option value="Senin">Senin</option>
+                                            <option value="Selasa">Selasa</option>
+                                            <option value="Rabu">Rabu</option>
+                                            <option value="Kamis">Kamis</option>
+                                            <option value="Jumat">Jumat</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="sesi-select" class="form-label">Pilih Sesi:</label>
+                                        <select id="sesi-select" class="form-select">
+                                            <option value="1">Sesi 1 (08:00-09:30)</option>
+                                            <option value="2">Sesi 2 (10:30-12:00)</option>
+                                            <option value="3">Sesi 3 (13:00-14:30)</option>
+                                            <option value="4">Sesi 4 (16:00-17:30)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <label for="pekan-select" class="form-label">Pilih Pekan:</label>
+                                        <div class="form-check-inline">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="1" id="pekan-1">
+                                                <label class="form-check-label" for="pekan-1">Pekan ke 1</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="2" id="pekan-2">
+                                                <label class="form-check-label" for="pekan-2">Pekan ke 2</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="3" id="pekan-3">
+                                                <label class="form-check-label" for="pekan-3">Pekan ke 3</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="4" id="pekan-4">
+                                                <label class="form-check-label" for="pekan-4">Pekan ke 4</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="5" id="pekan-5">
+                                                <label class="form-check-label" for="pekan-5">Pekan ke 5</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="6" id="pekan-6">
+                                                <label class="form-check-label" for="pekan-6">Pekan ke 6</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button id="tambah-ketidaktersediaan" class="btn btn-primary">Tambahkan Ketidaktersediaan</button>
+                                
+                                <div class="mt-3">
+                                    <h6>Daftar Ketidaktersediaan Dosen:</h6>
+                                    <table id="tabel-ketidaktersediaan" class="table table-sm table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Dosen</th>
+                                                <th>Hari</th>
+                                                <th>Sesi</th>
+                                                <th>Pekan</th>
+                                                <th>Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Data akan diisi oleh JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                     
                     <div class="col-md-6">
